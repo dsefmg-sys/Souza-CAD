@@ -105,7 +105,7 @@ import { parseVerticesVizinho } from '@/lib/io/verticesVizinho';
 import { validarTamanhoArquivo } from '@/lib/io/validarArquivo';
 import { ufsNoBbox, temaIncra, TEMAS_CONFRONTANTE, INCRA_UFS } from '@/lib/io/incraTemas';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
-import { ancoraMunicipio, MUNICIPIOS, detectarFusoPorRegiao, ufDoMunicipio } from '@/lib/topo/municipios';
+import { ancoraMunicipio, MUNICIPIOS, detectarFusoPorRegiao, ufDoMunicipio, formatarTextoMultimunicipal } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm, type SegmentoSnap } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
@@ -892,73 +892,85 @@ export default function EditorPage() {
   const [objPersonalizarId, setObjPersonalizarId] = useState<string | null>(null);
   const [copiaBuffer, setCopiaBuffer] = useState<ObjetoDesenho | null>(null);
 
-  // Carrega limite municipal automático via API OSM Nominatim com cache
+  // Carrega limites municipais automáticos (único ou múltiplos municípios) via API OSM Nominatim com cache
   useEffect(() => {
-    const mun = imovel.municipio;
-    if (!mun || mun.trim() === '' || mun.trim() === '—' || mun.trim() === 'DADO AUSENTE') {
-      setGeojsonMunicipio(null);
-      return;
-    }
-    
-    // Heurística de UF baseada em lastIndexOf('-')
-    const idxHifen = mun.lastIndexOf('-');
-    let cidade = mun;
-    let uf = '';
-    if (idxHifen >= 0) {
-      cidade = mun.substring(0, idxHifen).trim();
-      uf = mun.substring(idxHifen + 1).trim();
-    }
-    
-    if (!cidade || !uf) {
+    const munStr = imovel.municipio;
+    if (!munStr || munStr.trim() === '' || munStr.trim() === '—' || munStr.trim() === 'DADO AUSENTE') {
       setGeojsonMunicipio(null);
       return;
     }
 
-    const cacheKey = `mun_limite_${cidade.toLowerCase().replace(/\s+/g, '_')}_${uf.toLowerCase()}`;
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (parsed.timestamp && Date.now() - parsed.timestamp < 30 * 24 * 60 * 60 * 1000) {
-          setGeojsonMunicipio(parsed.geojson);
-          return;
-        }
-      } catch {
-        localStorage.removeItem(cacheKey);
+    const { municipios } = formatarTextoMultimunicipal(munStr);
+    const lista = municipios.length > 0 ? municipios : [munStr];
+
+    let cancelado = false;
+
+    const buscarMunicipio = async (m: string) => {
+      const idxHifen = m.lastIndexOf('-');
+      let cidade = m;
+      let uf = '';
+      if (idxHifen >= 0) {
+        cidade = m.substring(0, idxHifen).trim();
+        uf = m.substring(idxHifen + 1).trim();
       }
-    }
+      if (!cidade) return null;
 
-    const query = `${cidade} ${uf} Brazil`;
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&polygon_geojson=1&format=json&limit=1`;
-    
-    fetch(url, { headers: { 'User-Agent': 'SouzaCAD-Agrimensura-App/1.0' } })
-      .then(res => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then(data => {
+      const cacheKey = `mun_limite_${cidade.toLowerCase().replace(/\s+/g, '_')}_${uf.toLowerCase()}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed.timestamp && Date.now() - parsed.timestamp < 30 * 24 * 60 * 60 * 1000) {
+            return {
+              type: 'Feature',
+              properties: { name: m, display_name: m, cidade, uf },
+              geometry: parsed.geojson,
+            };
+          }
+        } catch {
+          localStorage.removeItem(cacheKey);
+        }
+      }
+
+      const query = `${cidade} ${uf} Brazil`.trim();
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&polygon_geojson=1&format=json&limit=1`;
+
+      try {
+        const res = await fetch(url, { headers: { 'User-Agent': 'SouzaCAD-Agrimensura-App/1.0' } });
+        if (!res.ok) return null;
+        const data = await res.json();
         if (data && data[0] && data[0].geojson) {
           const geojson = data[0].geojson;
           try {
             localStorage.setItem(cacheKey, JSON.stringify({ geojson, timestamp: Date.now() }));
-          } catch (e) {
-            if ((e as Error).name === 'QuotaExceededError') {
-              for (let i = 0; i < localStorage.length; i++) {
-                const k = localStorage.key(i);
-                if (k && k.startsWith('mun_limite_')) {
-                  localStorage.removeItem(k);
-                }
-              }
-            }
-          }
-          setGeojsonMunicipio(geojson);
-        } else {
-          setGeojsonMunicipio(null);
+          } catch { /* ignore quota */ }
+          return {
+            type: 'Feature',
+            properties: { name: m, display_name: m, cidade, uf },
+            geometry: geojson,
+          };
         }
-      })
-      .catch(() => {
+      } catch {
+        return null;
+      }
+      return null;
+    };
+
+    Promise.all(lista.map((m) => buscarMunicipio(m))).then((feats) => {
+      if (cancelado) return;
+      const validFeats = feats.filter(Boolean);
+      if (validFeats.length > 0) {
+        setGeojsonMunicipio({
+          type: 'FeatureCollection',
+          properties: { name: munStr, display_name: munStr },
+          features: validFeats,
+        });
+      } else {
         setGeojsonMunicipio(null);
-      });
+      }
+    });
+
+    return () => { cancelado = true; };
   }, [imovel.municipio]);
 
   // Sincronização reativa e bidirecional do estado de trabalho ativo para as glebas do projeto
@@ -9956,7 +9968,7 @@ export default function EditorPage() {
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="size-4 animate-bounce shrink-0 text-indigo-500" />
                     <span>
-                      <strong>Transposição de Fuso UTM:</strong> O imóvel perpassa os fusos UTM <strong>{cruzamentoFuso.map(f => `${f}S`).join(' e ')}</strong>. Recomendável utilizar o Sistema Geodésico Local (SGL) para cálculo perimétrico.
+                      <strong>Transposição de Fuso UTM:</strong> O imóvel perpassa os fusos UTM <strong>{cruzamentoFuso.map(f => `${f}S`).join(' e ')}</strong>. O SIGEF/INCRA calcula a área e o perímetro geodesicamente no elipsoide (SIRGAS2000). Para peças técnicas, utilize o cálculo geodésico ou os valores conciliados do SIGEF.
                     </span>
                   </div>
                 </div>

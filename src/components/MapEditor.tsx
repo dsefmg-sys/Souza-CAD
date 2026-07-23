@@ -1673,6 +1673,54 @@ export default function MapEditor(props: Props) {
     return result;
   }, [vertices]);
 
+  // Centróides e nomes de todos os municípios (único ou multi-municípios) para exibição permanente no mapa
+  const centroidesMunicipais = useMemo(() => {
+    if (!geojsonMunicipio) return [];
+    const feats: any[] = geojsonMunicipio.type === 'FeatureCollection'
+      ? (geojsonMunicipio.features || [])
+      : [geojsonMunicipio];
+
+    const res: { id: string; nome: string; lat: number; lon: number }[] = [];
+
+    feats.forEach((feat: any, idx: number) => {
+      const props = feat.properties || {};
+      const rawName = props.display_name || props.name || props.cidade || `Município ${idx + 1}`;
+      const formatted = formatarTextoMultimunicipal(rawName).textoCompleto || rawName;
+
+      const geom = feat.geometry || feat;
+      let coordsRaw: any[] = [];
+      if (geom.type === 'Polygon') {
+        coordsRaw = geom.coordinates?.[0] || [];
+      } else if (geom.type === 'MultiPolygon') {
+        coordsRaw = (geom.coordinates || []).flatMap((poly: any) => poly[0] || []);
+      } else if (Array.isArray(geom.coordinates)) {
+        coordsRaw = geom.coordinates.flat(geom.type === 'Point' ? 0 : 2);
+      }
+
+      let sumLat = 0;
+      let sumLon = 0;
+      let count = 0;
+      coordsRaw.forEach((pt: any) => {
+        if (Array.isArray(pt) && pt.length >= 2 && Number.isFinite(pt[0]) && Number.isFinite(pt[1])) {
+          sumLon += pt[0];
+          sumLat += pt[1];
+          count++;
+        }
+      });
+
+      if (count > 0) {
+        res.push({
+          id: `mun-label-${idx}-${formatted}`,
+          nome: formatted.toUpperCase(),
+          lat: sumLat / count,
+          lon: sumLon / count,
+        });
+      }
+    });
+
+    return res;
+  }, [geojsonMunicipio]);
+
   return (
     <div
       style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: '#090d16' }}
@@ -1844,24 +1892,37 @@ export default function MapEditor(props: Props) {
         );
       })}
 
-      {/* Limites municipais automáticos e Rótulo do Nome do Município no Mapa */}
-      {geojsonMunicipio && zoomCorrente >= 10 && (
-        <GeoJSON
-          key={`mun-limite-${JSON.stringify(geojsonMunicipio.coordinates?.[0]?.[0] || '')}`}
-          data={geojsonMunicipio}
-          style={{
-            color: '#a855f7',
-            weight: 2,
-            dashArray: '5 6',
-            fillColor: '#a855f7',
-            fillOpacity: 0.01,
-            interactive: true
-          }}
-        >
-          <Tooltip direction="top" className="bg-purple-950/95 text-purple-300 text-[11px] font-black border border-purple-600/60 px-2.5 py-1 rounded-md shadow-xl uppercase select-none pointer-events-none tracking-wide">
-            {`MUNICÍPIO(S): ${formatarTextoMultimunicipal(geojsonMunicipio.properties?.display_name || geojsonMunicipio.properties?.name || '').textoCompleto || geojsonMunicipio.properties?.name || 'DIVISA MUNICIPAL'}`}
-          </Tooltip>
-        </GeoJSON>
+      {/* Limites municipais automáticos e Rótulos Permanentes dos Municípios no Mapa */}
+      {geojsonMunicipio && zoomCorrente >= 8 && (
+        <>
+          <GeoJSON
+            key={`mun-limite-${JSON.stringify(geojsonMunicipio.type || '')}-${centroidesMunicipais.length}`}
+            data={geojsonMunicipio}
+            style={{
+              color: '#a855f7',
+              weight: 2.5,
+              dashArray: '6 6',
+              fillColor: '#a855f7',
+              fillOpacity: 0.02,
+              interactive: true
+            }}
+          />
+          {centroidesMunicipais.map((c: any) => (
+            <Marker
+              key={c.id}
+              position={[c.lat, c.lon]}
+              icon={L.divIcon({
+                className: 'custom-mun-label-marker',
+                html: `<div class="bg-purple-950/90 text-purple-200 text-[11px] font-black border-2 border-purple-500/80 px-3 py-1 rounded-lg shadow-2xl backdrop-blur-md uppercase tracking-wider whitespace-nowrap flex items-center gap-1.5 pointer-events-none transform -translate-x-1/2 -translate-y-1/2">
+                  <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                  🏛️ ${c.nome}
+                </div>`,
+                iconSize: [0, 0],
+                iconAnchor: [0, 0],
+              })}
+            />
+          ))}
+        </>
       )}
 
       {/* referências certificadas (snap) */}
