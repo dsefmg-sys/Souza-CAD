@@ -1782,35 +1782,48 @@ export default function Planta({
       })}
 
       {/* ---------- LINHAS DE CONFRONTANTES (apoio visual na tela, para dentro do polígono, com a cor de cada confrontante) ---------- */}
-      {editavel && confrontantePorLado && vertices.map((v, i) => {
-        const confId = confrontantePorLado[i];
-        if (!confId) return null;
-        const conf = confrontantes.find((c) => c.id === confId);
-        if (!conf) return null;
-        const a = anel[i], b = anel[(i + 1) % anel.length];
-        if (!a || !b) return null;
-        let nx = -(b.y - a.y), ny = b.x - a.x;
-        const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
-        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-        const polyCx = anel.reduce((s, p) => s + p.x, 0) / (anel.length || 1);
-        const polyCy = anel.reduce((s, p) => s + p.y, 0) / (anel.length || 1);
-        if ((mx - polyCx) * nx + (my - polyCy) * ny < 0) { nx = -nx; ny = -ny; }
-        const inOff = -7.0;
-        const ax = a.x + nx * inOff, ay = a.y + ny * inOff, bx = b.x + nx * inOff, by = b.y + ny * inOff;
-        const corConf = corPorConfrontante(conf.id, conf);
-        return (
-          <line
-            key={`conf-seg-planta-${v.id}-${i}`}
-            x1={ax} y1={ay} x2={bx} y2={by}
-            stroke={corConf}
-            strokeWidth={3.5}
-            strokeDasharray="6 4"
-            strokeLinecap="round"
-            opacity={0.95}
-            className="nao-imprimir"
-          />
-        );
-      })}
+      {editavel && confrontantePorLado && (() => {
+        if (anel.length < 3) return null;
+        let sum = 0;
+        for (let k = 0; k < anel.length; k++) {
+          const curr = anel[k];
+          const next = anel[(k + 1) % anel.length];
+          sum += (next.x - curr.x) * (next.y + curr.y);
+        }
+        const isClockwiseSVG = sum > 0;
+
+        return vertices.map((v, i) => {
+          const confId = confrontantePorLado[i];
+          if (!confId) return null;
+          const conf = confrontantes.find((c) => c.id === confId);
+          if (!conf) return null;
+          const a = anel[i], b = anel[(i + 1) % anel.length];
+          if (!a || !b) return null;
+
+          const segDx = b.x - a.x, segDy = b.y - a.y;
+          let nx = isClockwiseSVG ? -segDy : segDy;
+          let ny = isClockwiseSVG ? segDx : -segDx;
+          const len = Math.hypot(nx, ny) || 1;
+          nx /= len; ny /= len;
+
+          const inOff = 6.0; // desloca 6px para DENTRO do polígono
+          const ax = a.x + nx * inOff, ay = a.y + ny * inOff;
+          const bx = b.x + nx * inOff, by = b.y + ny * inOff;
+          const corConf = corPorConfrontante(conf.id, conf);
+          return (
+            <line
+              key={`conf-seg-planta-${v.id}-${i}`}
+              x1={ax} y1={ay} x2={bx} y2={by}
+              stroke={corConf}
+              strokeWidth={3.5}
+              strokeDasharray="6 4"
+              strokeLinecap="round"
+              opacity={0.95}
+              className="nao-imprimir"
+            />
+          );
+        });
+      })()}
 
       </g>
 
