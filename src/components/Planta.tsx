@@ -741,7 +741,8 @@ export default function Planta({
   // Afasta rótulos que se sobrepõem entre si E que caem em cima de qualquer vértice.
   const minLbl = fzRot * 4.6;   // separação mínima entre dois rótulos (aumentado de 3.6 para 4.6)
   const minVtx = offBase + 8;   // distância mínima de um rótulo a qualquer vértice (aumentado de offBase - 1 para offBase + 8)
-  for (let step = 0; step < 24; step++) {
+  const maxSteps = initialRotuloVert.length > 300 ? 3 : initialRotuloVert.length > 150 ? 8 : 24;
+  for (let step = 0; step < maxSteps; step++) {
     for (let i = 0; i < initialRotuloVert.length; i++) {
       const r1 = initialRotuloVert[i];
       if (r1.hasPos) continue;

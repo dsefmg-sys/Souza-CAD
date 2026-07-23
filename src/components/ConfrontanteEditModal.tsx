@@ -7,6 +7,7 @@ import { Users } from 'lucide-react';
 import type { Confrontante, CondicaoConfrontante, CartorioCad } from '@/lib/topo/types';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
 import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
+import { confirmar } from '@/lib/ui/dialogos';
 
 interface Props {
   open: boolean;
@@ -18,22 +19,19 @@ interface Props {
 
 function Campo({ label, value, onChange, ph, aviso, list }: { label: string; value: string; onChange: (v: string) => void; ph?: string; aviso?: string; list?: string }) {
   const formatado = /cpf|cnpj/i.test(label) ? formatarCpfCnpj(value) : value;
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawVal = e.target.value;
-    if (/cpf|cnpj/i.test(label)) {
-      onChange(formatarCpfCnpj(rawVal));
-    } else {
-      onChange(rawVal.toUpperCase());
-    }
-  };
-
   return (
-    <label className="flex flex-col gap-0.5 text-xs">
-      <span className="font-semibold text-muted-foreground">{label}</span>
-      <input list={list} className="h-8 rounded-sm border bg-background px-2 text-sm" value={formatado} placeholder={ph} onChange={handleChange} />
-      {aviso && <span className="mt-0.5 block font-medium text-amber-500">{aviso}</span>}
-    </label>
+    <div>
+      <label className="text-[11px] font-bold text-muted-foreground uppercase">{label}</label>
+      <input
+        type="text"
+        list={list}
+        value={formatado}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={ph}
+        className={`w-full h-8 px-2.5 text-xs rounded border bg-background ${aviso ? 'border-amber-500 font-mono' : 'border-input'} focus:outline-none focus:ring-1 focus:ring-ring`}
+      />
+      {aviso && <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">{aviso}</p>}
+    </div>
   );
 }
 
@@ -48,8 +46,19 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
 
   const avisoDoc = (v: string) => (v?.trim() && !cpfOuCnpjValido(v) ? 'CPF/CNPJ inválido (dígitos verificadores incorretos).' : undefined);
 
+  const tentarFechar = async () => {
+    if (JSON.stringify(c) !== JSON.stringify(confrontante)) {
+      const ok = await confirmar({
+        titulo: 'Descartar alterações?',
+        mensagem: 'Você fez alterações no cadastro deste confrontante que ainda não foram salvas. Deseja sair sem salvar?'
+      });
+      if (!ok) return;
+    }
+    onOpenChange(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(val) => { if (!val) void tentarFechar(); else onOpenChange(val); }}>
       <DialogContent className="max-w-4xl bg-background shadow-2xl p-6 rounded-xl overflow-hidden">
         <DialogHeader className="border-b pb-3">
           <DialogTitle className="flex items-center gap-2 text-lg font-black text-foreground">

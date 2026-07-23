@@ -517,7 +517,7 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   itensPedidos.forEach((p, idx) => {
     c.push(new Paragraph({
       alignment: AlignmentType.JUSTIFIED,
-      indent: { left: 720, firstLine: -360 }, // Recuo de lista
+      indent: { left: 720, hanging: 360 }, // Recuo de lista
       spacing: { after: 60 },
       children: [
         new TextRun({ text: `${idx + 1}. `, bold: true, size: 22 }),

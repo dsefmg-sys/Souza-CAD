@@ -104,6 +104,7 @@ function conferirGeometria(
 
     porCodigo.forEach((lista, cod) => {
       if (lista.length > 1) {
+        trava(`Vértice "${cod}" utilizado mais de uma vez (código repetido). No SIGEF, cada vértice é único.`);
         for (let i = 0; i < lista.length; i++) {
           for (let j = i + 1; j < lista.length; j++) {
             const dist = calcularDistanciaMetros(lista[i], lista[j]);
@@ -129,9 +130,6 @@ function conferirGeometria(
     }
   }
 
-  // todo trecho do perímetro precisa de um confrontante atribuído: sem isso, o memorial narra
-  // "confrontando com confrontante não informado" (texto literal, inválido para o cartório) e a
-  // planilha SIGEF sai com a célula de confrontante em branco naquele trecho.
   if (confrontantePorLado && vertices.length >= 3) {
     const semConfrontante = vertices.some((_, i) => !confrontantePorLado[i]?.trim());
     if (semConfrontante) {

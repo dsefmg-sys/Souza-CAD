@@ -94,9 +94,14 @@ export async function salvarProjeto(p: Projeto): Promise<DestinoSalvamento> {
       return 'local';
     }
   }
-  const d = await db();
-  await d.put('projetos', { ...reg, _uidLocal: marcaLocal() });
-  return 'local';
+  try {
+    const d = await db();
+    await d.put('projetos', { ...reg, _uidLocal: marcaLocal() });
+    return 'local';
+  } catch (err) {
+    console.error('Falha ao gravar no IndexedDB local:', err);
+    throw new Error('Não consegui salvar o projeto no navegador (o disco ou armazenamento local pode estar cheio). Libere espaço e tente novamente — seu trabalho continua aberto na tela.');
+  }
 }
 
 /**
