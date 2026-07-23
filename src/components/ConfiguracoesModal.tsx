@@ -933,26 +933,86 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
 
                 <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1.5">Memorial Descritivo</div>
                 
-                <div className="space-y-1.5 rounded-lg border bg-card p-3">
-                  <Label className="text-xs font-bold text-foreground">Coordenadas na Narrativa</Label>
-                  <p className="text-[11px] leading-tight text-muted-foreground">
-                    Escolha quais coordenadas exibir na descrição de cada vértice do Memorial Descritivo.
+                <div className="space-y-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3.5 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <Label className="text-xs font-black uppercase tracking-wider text-indigo-900 dark:text-indigo-300">Coordenadas na Narrativa Perimétrica</Label>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                      Configuração de Saída Word (.docx)
+                    </span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Escolha em qual sistema geodésico/plano cada vértice do seu imóvel será descrito no texto do Memorial Descritivo.
                   </p>
+                  
                   <select 
-                    className="w-full rounded-md border bg-background px-3 py-1.5 text-xs font-medium" 
+                    className="w-full rounded-md border border-indigo-500/30 bg-background px-3 py-2 text-xs font-bold text-foreground focus:ring-2 focus:ring-indigo-500 shadow-xs" 
                     value={prefs.memorialTipoCoordenada ?? 'geodesica'} 
                     onChange={(e) => mudarPref('memorialTipoCoordenada', e.target.value as any)}
                   >
-                    <option value="geodesica">Apenas Geodésicas (Latitude/Longitude)</option>
-                    <option value="utm">Apenas Planas (UTM E/N)</option>
-                    <option value="ambas">UTM Planas + Geodésicas (Lat/Lon)</option>
+                    <option value="geodesica">⭐ Apenas Geodésicas (Latitude/Longitude) — Recomendado SIGEF / INCRA</option>
+                    <option value="utm">Apenas Planas (UTM E/N em metros) — Cartórios Tradicionais / REURB / Urbano</option>
+                    <option value="ambas">UTM Planas + Geodésicas (Lat/Lon) — Memorial Completo Expandido</option>
                   </select>
+
+                  {/* Card Orientativo & Exemplo em Tempo Real */}
+                  {((prefs.memorialTipoCoordenada ?? 'geodesica') === 'geodesica') && (
+                    <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs space-y-1.5">
+                      <div className="flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-300">
+                        <Check className="size-4 shrink-0 text-emerald-500" />
+                        <span>Recomendado para Georreferenciamento Rural (SIGEF / INCRA - Lei 10.267/01)</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-tight">
+                        Exibe apenas a Latitude e Longitude de cada vértice na narrativa principal. É o padrão oficial exigido pelas Normas Técnicas do INCRA/SIGEF.
+                      </p>
+                      <div className="p-2 rounded bg-background border font-mono text-[10.5px] text-emerald-800 dark:text-emerald-200">
+                        <span className="font-bold text-muted-foreground">Exemplo no Word: </span>
+                        &quot;...inicia-se no vértice <strong className="text-emerald-600 dark:text-emerald-400">M-0001</strong>, de coordenadas <strong className="text-emerald-600 dark:text-emerald-400">Latitude 20°30&apos;15,42&quot;S</strong> e <strong className="text-emerald-600 dark:text-emerald-400">Longitude 42°15&apos;10,12&quot;O</strong>...&quot;
+                      </div>
+                    </div>
+                  )}
+
+                  {((prefs.memorialTipoCoordenada ?? 'geodesica') === 'utm') && (
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs space-y-1.5">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-300">
+                        <Building2 className="size-4 shrink-0 text-amber-500" />
+                        <span>Indicado para Cartórios Tradicionais, REURB e Topografia Urbana</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-tight">
+                        Exibe apenas as coordenadas planas UTM N (Norte) e E (Este) em metros. Muito comum em processos municipais, regularização urbana e loteamentos.
+                      </p>
+                      <div className="p-2 rounded bg-background border font-mono text-[10.5px] text-amber-800 dark:text-amber-200">
+                        <span className="font-bold text-muted-foreground">Exemplo no Word: </span>
+                        &quot;...inicia-se no vértice <strong className="text-amber-600 dark:text-amber-400">M-0001</strong>, de coordenadas <strong className="text-amber-600 dark:text-amber-400">N 7.700.123,45m</strong> e <strong className="text-amber-600 dark:text-amber-400">E 800.123,45m</strong>...&quot;
+                      </div>
+                    </div>
+                  )}
+
+                  {((prefs.memorialTipoCoordenada ?? 'geodesica') === 'ambas') && (
+                    <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 text-xs space-y-1.5">
+                      <div className="flex items-center gap-1.5 font-bold text-blue-700 dark:text-blue-300">
+                        <FileText className="size-4 shrink-0 text-blue-500" />
+                        <span>Memorial Completo (Combina UTM + Geodésicas)</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-tight">
+                        Exibe as coordenadas planas em metros seguidas das coordenadas geodésicas em parênteses. Garante aceitação total em qualquer Registro de Imóveis.
+                      </p>
+                      <div className="p-2 rounded bg-background border font-mono text-[10.5px] text-blue-800 dark:text-blue-200">
+                        <span className="font-bold text-muted-foreground">Exemplo no Word: </span>
+                        &quot;...inicia-se no vértice <strong className="text-blue-600 dark:text-blue-400">M-0001</strong>, de coordenadas <strong className="text-blue-600 dark:text-blue-400">N 7.700.123,45m e E 800.123,45m</strong> (Lat: 20°30&apos;15,42&quot;S, Lon: 42°15&apos;10,12&quot;O)...&quot;
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="space-y-1.5 rounded-lg border bg-card p-3">
-                  <Label className="text-xs font-bold text-foreground">Formato de Latitude/Longitude</Label>
+                <div className="space-y-2 rounded-xl border bg-card p-3.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-foreground">Formato da Latitude/Longitude</Label>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {(prefs.memorialLatLonFormat ?? 'gms') === 'gms' ? 'Graus, Minutos e Segundos' : 'Graus Decimais'}
+                    </span>
+                  </div>
                   <p className="text-[11px] leading-tight text-muted-foreground">
-                    Selecione o formato de exibição da Latitude/Longitude (se incluídas).
+                    Selecione a notação das coordenadas geodésicas (quando ativadas acima).
                   </p>
                   <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
                     {(['gms', 'decimal'] as const).map((fmt) => (
@@ -960,13 +1020,13 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                         key={fmt} 
                         type="button" 
                         onClick={() => mudarPref('memorialLatLonFormat', fmt)}
-                        className={`rounded-full px-3 py-1 font-semibold transition-colors ${
+                        className={`rounded-full px-3.5 py-1 font-bold text-xs transition-all ${
                           (prefs.memorialLatLonFormat ?? 'gms') === fmt 
-                            ? 'bg-primary text-primary-foreground' 
+                            ? 'bg-primary text-primary-foreground shadow-xs' 
                             : 'text-muted-foreground hover:bg-muted'
                         }`}
                       >
-                        {fmt === 'gms' ? 'GMS (°\'\")' : 'Decimal (Graus)'}
+                        {fmt === 'gms' ? 'GMS (° \' ") (Oficial INCRA)' : 'Decimal (Graus)'}
                       </button>
                     ))}
                   </div>
