@@ -446,6 +446,12 @@ export interface ImovelData {
     taxaJurosAnual?: number;
     carenciaMeses?: number;
     prazoAnos?: number;
+    enquadramentoPrograma?: 'pronaf' | 'pronamp' | 'demais';
+    possuiCafDap?: boolean;
+    rendaBrutaAnual?: number;
+    solicitarProagro?: boolean;
+    zarcAtendido?: boolean;
+    aliquotaProagro?: number;
     cronogramaEtapas?: Array<{
       id: string;
       etapa: string;

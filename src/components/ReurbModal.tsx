@@ -208,11 +208,11 @@ export default function ReurbModal({
           </div>
 
           <div className="pt-4 border-t flex flex-wrap gap-2 justify-end">
-            <Button variant="outline" className="text-xs font-bold gap-1.5" onClick={baixarPRF}>
+            <Button className="bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs gap-1.5" onClick={baixarPRF}>
               <Download className="size-4" /> Projeto de REURB (PDF)
             </Button>
-            <Button variant="outline" className="text-xs font-bold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={baixarLaudoReurbDocx}>
-              <Download className="size-4 text-blue-600" /> Projeto / Certidão REURB (Word)
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5" onClick={baixarLaudoReurbDocx}>
+              <Download className="size-4" /> Projeto / Certidão REURB (Word)
             </Button>
             <Button className="bg-amber-600 hover:bg-amber-700 text-white font-bold gap-1.5 text-xs" onClick={baixarCRF}>
               <Download className="size-4" /> Certidão CRF (PDF)

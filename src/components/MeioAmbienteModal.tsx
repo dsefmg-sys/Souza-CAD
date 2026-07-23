@@ -287,10 +287,10 @@ export default function MeioAmbienteModal({
               </div>
 
               <div className="pt-2 border-t flex flex-wrap gap-2 justify-end">
-                <Button variant="outline" className="text-xs font-bold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={baixarLtcaDocx}>
-                  <Download className="size-4 text-blue-600" /> Laudo LTCA (Word)
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5" onClick={baixarLtcaDocx}>
+                  <Download className="size-4" /> Laudo LTCA (Word)
                 </Button>
-                <Button className="bg-lime-600 hover:bg-lime-700 text-white font-bold gap-1.5 text-xs" onClick={baixarLTCA}>
+                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 text-xs" onClick={baixarLTCA}>
                   <Download className="size-4" /> Laudo LTCA (PDF)
                 </Button>
               </div>

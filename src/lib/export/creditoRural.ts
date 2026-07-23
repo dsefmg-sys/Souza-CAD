@@ -6,6 +6,7 @@ export interface ItemFinanciado {
   id: string;
   descricao: string;
   categoria: string;
+  unidade?: string;
   quantidade: number;
   valorUnitario: number;
   valorTotal: number;
@@ -25,6 +26,12 @@ export interface DadosCredito {
   taxaJurosAnual?: number;
   carenciaMeses?: number;
   prazoAnos?: number;
+  enquadramentoPrograma?: 'pronaf' | 'pronamp' | 'demais';
+  possuiCafDap?: boolean;
+  rendaBrutaAnual?: number;
+  solicitarProagro?: boolean;
+  zarcAtendido?: boolean;
+  aliquotaProagro?: number;
   cronogramaEtapas: Array<{
     id: string;
     etapa: string;

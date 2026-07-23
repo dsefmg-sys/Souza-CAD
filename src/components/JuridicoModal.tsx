@@ -244,11 +244,11 @@ export default function JuridicoModal({
               </div>
 
               <div className="pt-2 border-t flex flex-wrap gap-2 justify-end items-center">
-                <Button type="button" variant="outline" className="text-xs font-bold mr-auto" onClick={restaurarTextoPadrao}>
+                <Button type="button" className="bg-slate-600 hover:bg-slate-700 text-white font-bold text-xs mr-auto" onClick={restaurarTextoPadrao}>
                   Restaurar Texto Padrão
                 </Button>
-                <Button variant="outline" className="text-xs font-bold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={baixarParecerDocx}>
-                  <Download className="size-4 text-blue-600" /> Parecer Jurídico (Word)
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5" onClick={baixarParecerDocx}>
+                  <Download className="size-4" /> Parecer Jurídico (Word)
                 </Button>
                 <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5 text-xs" onClick={baixarPeticao}>
                   <Download className="size-4" /> Petição Inicial (PDF)

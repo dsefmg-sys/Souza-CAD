@@ -449,13 +449,13 @@ export default function LoteamentoModal({
           </div>
 
           <div className="pt-4 border-t flex flex-wrap gap-2 justify-end">
-            <Button variant="outline" className="text-xs font-bold gap-1.5 mr-auto" onClick={baixarMemoriaisLotesZip}>
+            <Button className="bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs gap-1.5 mr-auto" onClick={baixarMemoriaisLotesZip}>
               <Download className="size-4" /> Memoriais por Lote (ZIP)
             </Button>
-            <Button variant="outline" className="text-xs font-bold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={baixarQuadroLoteamentoDocx}>
-              <Download className="size-4 text-blue-600" /> Memorial de Loteamento (Word)
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5" onClick={baixarQuadroLoteamentoDocx}>
+              <Download className="size-4" /> Memorial de Loteamento (Word)
             </Button>
-            <Button variant="outline" className="text-xs font-bold gap-1.5" onClick={baixarLaudoInfra}>
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs gap-1.5" onClick={baixarLaudoInfra}>
               <Download className="size-4" /> Infraestrutura &amp; Terraplenagem (PDF)
             </Button>
             <Button className="bg-teal-600 hover:bg-teal-700 text-white font-bold gap-1.5 text-xs" onClick={baixarMemorial}>
