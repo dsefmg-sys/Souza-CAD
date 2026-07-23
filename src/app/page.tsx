@@ -7568,6 +7568,76 @@ export default function EditorPage() {
     aviso(`Projeto fictício de demonstração com ${listaGlebas.length} parcelas/lotes carregado com sucesso.`);
   }
 
+  // Gera uma CÓPIA do projeto atual com dados cadastrais FICTÍCIOS (para gravação de vídeos/aulas).
+  // Preserva 100% da geometria (polígonos, vértices, coordenadas UTM, altitudes, camadas CAD e glebas).
+  // Atribui projetoId = null e nome "COPIA DADOS FICTICIOS - [Original]" garantindo que salvar cria um NOVO projeto no banco!
+  async function mascararProjetoAtualParaDemo() {
+    if (vertices.length < 3) {
+      aviso('Desenhe ou importe um perímetro com pelo menos 3 vértices antes de gerar a cópia fictícia.');
+      return;
+    }
+
+    snap();
+
+    const nomeOriginal = imovel.denominacao || nomeProjeto || 'PROJETO_ORIGINAL';
+    const novoNomeProjeto = `COPIA DADOS FICTICIOS - ${nomeOriginal}`;
+
+    const nomesFicticiosProp = [
+      'CARLOS EDUARDO MEDEIROS', 'MARCOS ANTONIO ALVES', 'ROBERTO GONÇALVES DA SILVA',
+      'FERNANDA MARIA DE SOUZA', 'JULIANA MEDEIROS REIS', 'RICARDO BARBOSA LEITE'
+    ];
+    const cpfsFicticios = [
+      '111.222.333-44', '555.666.777-88', '999.888.777-66', '444.333.222-11', '777.888.999-00'
+    ];
+
+    const propFic = nomesFicticiosProp[Math.floor(Math.random() * nomesFicticiosProp.length)];
+    const cpfFic = cpfsFicticios[Math.floor(Math.random() * cpfsFicticios.length)];
+
+    const imovelFicticio: ImovelData = {
+      ...imovel,
+      denominacao: `${imovel.denominacao || 'FAZENDA'} (DEMO FICTÍCIO)`,
+      proprietario: propFic,
+      cpfProprietario: cpfFic,
+      matricula: '12.345-DEMO',
+      cns: '123456',
+      codigoImovelIncra: '950.082.014.218-9',
+      posseiro: imovel.posseiro ? 'POSSEIRO FICTÍCIO DEMO' : undefined,
+      inventarianteNome: imovel.inventarianteNome ? 'INVENTARIANTE FICTÍCIO DEMO' : undefined,
+    };
+
+    const confrontantesFicticios: Confrontante[] = confrontantes.map((c, i) => ({
+      ...c,
+      nome: `CONFRONTANTE FICTÍCIO ${i + 1} (DEMO)`,
+      cpf: cpfsFicticios[i % cpfsFicticios.length],
+      matricula: `${1000 + i * 5}-DEMO`,
+      cns: '123456',
+      conjugeNome: c.conjugeNome ? `CÔNJUGE FICTÍCIO ${i + 1}` : undefined,
+      conjugeCpf: c.conjugeCpf ? cpfsFicticios[(i + 1) % cpfsFicticios.length] : undefined,
+    }));
+
+    // Desvincula o ID para salvar como NOVO arquivo de demonstração sem sobrescrever o original!
+    setProjetoId(null);
+    setNomeProjeto(novoNomeProjeto);
+    setNomeProjetoManual(true);
+    setImovel(imovelFicticio);
+    setConfrontantes(confrontantesFicticios);
+
+    // Atualiza as glebas mantendo os vértices e posições de desenho intocados
+    setGlebas((prevGlebas) =>
+      prevGlebas.map((g) => ({
+        ...g,
+        denominacao: `${g.denominacao || 'Gleba'} (DEMO)`,
+        confrontantes: confrontantesFicticios,
+      }))
+    );
+
+    acabouDeSalvar.current = false;
+    setSalvarLaranja(true);
+    setSalvoOk(false);
+
+    aviso(`Cópia fictícia "${novoNomeProjeto}" criada para vídeo! Sua geometria original foi mantida.`);
+  }
+
   async function converterPolilinhaEmPerimetro() {
     if (!objetoSelId) return;
     const o = objetos.find((x) => x.id === objetoSelId);
@@ -10802,6 +10872,7 @@ export default function EditorPage() {
             opcoes: opts
           });
         }}
+        onMascararProjetoAtual={mascararProjetoAtualParaDemo}
       />
       <MeioAmbienteModal
         open={meioAmbienteAberto}
@@ -13109,6 +13180,8 @@ export default function EditorPage() {
         setCopiaBuffer={setCopiaBuffer}
         imovel={imovel}
         setImovel={setImovel}
+        confrontantes={confrontantes}
+        setConfrontantes={setConfrontantes}
         onAbrirDadosGleba={(id) => {
           if (id) trocarGleba(id);
           setAba('glebas');

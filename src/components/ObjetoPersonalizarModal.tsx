@@ -28,6 +28,8 @@ interface ObjetoPersonalizarModalProps {
   imovel?: ImovelData;
   setImovel?: React.Dispatch<React.SetStateAction<ImovelData>>;
   onAbrirDadosGleba?: (id?: string) => void;
+  confrontantes?: import('@/lib/topo/types').Confrontante[];
+  setConfrontantes?: React.Dispatch<React.SetStateAction<import('@/lib/topo/types').Confrontante[]>>;
 }
 
 export function ObjetoPersonalizarModal({
@@ -51,6 +53,8 @@ export function ObjetoPersonalizarModal({
   imovel,
   setImovel,
   onAbrirDadosGleba,
+  confrontantes,
+  setConfrontantes,
 }: ObjetoPersonalizarModalProps) {
   const [ajustarTodasGlebas, setAjustarTodasGlebas] = useState(true);
 
@@ -75,7 +79,93 @@ export function ObjetoPersonalizarModal({
       </div>
 
       {(() => {
-        if (objPersonalizarId === 'planta.centroInfo' || objPersonalizarId === 'planta:titulo_imovel' || objPersonalizarId.startsWith('gleba:')) {
+        if (objPersonalizarId.startsWith('confrontante:')) {
+          const confId = objPersonalizarId.replace('confrontante:', '');
+          const c = confrontantes?.find((x) => x.id === confId);
+          if (c) {
+            const tamAtual = c.tamRotulo || 12;
+
+            const setTam = (n: number) => {
+              const val = Math.max(6, Math.min(48, n));
+              if (setConfrontantes) {
+                setConfrontantes((cs) => cs.map((item) => (item.id === c.id ? { ...item, tamRotulo: val } : item)));
+              }
+            };
+
+            const aplicarEmTodos = () => {
+              if (setConfrontantes) {
+                setConfrontantes((cs) => cs.map((item) => ({ ...item, tamRotulo: tamAtual })));
+                aviso(`Tamanho ${tamAtual}pt aplicado a todos os confrontantes.`);
+              }
+            };
+
+            return (
+              <div className="space-y-4">
+                <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Confrontante Rótulo: {c.nome}</div>
+
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nome do Confrontante</Label>
+                  <input
+                    type="text"
+                    value={c.nome}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (setConfrontantes) {
+                        setConfrontantes((cs) => cs.map((item) => (item.id === c.id ? { ...item, nome: val } : item)));
+                      }
+                    }}
+                    className="w-full rounded border bg-background px-2.5 py-1 text-xs focus:ring-1 focus:ring-amber-500 font-bold"
+                  />
+                </div>
+
+                <div className="space-y-1.5 border-t pt-2">
+                  <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                    <span>Tamanho da Fonte / Rótulo</span>
+                    <span className="font-mono font-bold text-foreground">{tamAtual} pt</span>
+                  </div>
+                  <div className="flex gap-1.5 items-center">
+                    <button
+                      type="button"
+                      className="h-7 px-2.5 text-xs font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer"
+                      onClick={() => setTam(tamAtual - 1)}
+                    >
+                      A−
+                    </button>
+                    <button
+                      type="button"
+                      className="h-7 px-2.5 text-xs font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer"
+                      onClick={() => setTam(tamAtual + 1)}
+                    >
+                      A+
+                    </button>
+                    <div className="flex gap-1 flex-1 overflow-x-auto scrollbar-none">
+                      {[10, 12, 14, 16, 18, 20].map((sz) => (
+                        <button
+                          key={sz}
+                          type="button"
+                          onClick={() => setTam(sz)}
+                          className={`h-7 px-2 text-[10px] font-bold rounded border ${tamAtual === sz ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
+                        >
+                          {sz}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={aplicarEmTodos}
+                  className="w-full py-1.5 rounded border border-amber-500/40 text-amber-700 dark:text-amber-300 font-bold text-[10.5px] hover:bg-amber-500/10 transition-colors"
+                >
+                  Aplicar tamanho {tamAtual}pt em todos os confrontantes
+                </button>
+              </div>
+            );
+          }
+        }
+
+        if (objPersonalizarId === 'planta.centroInfo' || objPersonalizarId === 'planta:titulo_imovel' || objPersonalizarId === 'planta:interior' || objPersonalizarId.startsWith('gleba:')) {
           const idTarget = objPersonalizarId || 'planta.centroInfo';
           const ovCentro = plantaConfig.textos?.[idTarget] || plantaConfig.textos?.['planta.centroInfo'] || {};
           const escCentro = ovCentro.escala ?? plantaConfig.escalaTextoCentroGlebas ?? 1.0;
