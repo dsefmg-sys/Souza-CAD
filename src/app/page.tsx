@@ -4517,7 +4517,7 @@ export default function EditorPage() {
   }
   function onMoverRotuloVertice(id: string, lat: number, lon: number) {
     snap();
-    setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, posRotulo: { lat, lon } } : v)));
+    setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, posRotuloMapa: { lat, lon } } : v)));
   }
 
   function alternarTipo(id: string) {
@@ -7882,7 +7882,7 @@ export default function EditorPage() {
     return {
       passo: 9,
       resumo: "Passo Final: Baixar o pacote de peças técnicas (PEÇAS)",
-      detalhe: "Seu projeto está concluído e pronto para entrega! Clique no botão \"PEÇAS\" no cabeçalho (F10) ou use o menu dropdown para baixar individualmente ou o Pacote ZIP com Memorial Descritivo (.docx), Planta (.svg), Requerimento e Declarações."
+      detalhe: "Seu projeto está concluído e pronto para entrega! Clique no botão \"PEÇAS\" no cabeçalho (F10) ou use o menu dropdown para baixar individualmente ou o Pacote ZIP com Memorial Descritivo (.docx), Planta (.svg), Requerimento e Declarações"
     };
   }, [vertices, imovel, confrontantePorLado, sigefStatus, baixou, projPronto]);
 
@@ -7924,10 +7924,9 @@ export default function EditorPage() {
       ef ? `Área: ${numBR(ef.areaHa, 4)} ha` : '',
       ef ? `Perímetro: ${numBR(ef.perimetro)} m` : '',
     ].filter(Boolean);
-    const p = plantaConfig.centroInfoPos;
+    const p = plantaConfig.centroInfoPosMapa ?? plantaConfig.centroInfoPos;
     return { linhas, lat: p?.lat, lon: p?.lon };
-     
-  }, [vertices.length, res, imovel, glebaAtivaNome, glebas.length, plantaConfig.centroInfoPos]);
+  }, [vertices.length, res, imovel, glebaAtivaNome, glebas.length, plantaConfig.centroInfoPosMapa, plantaConfig.centroInfoPos]);
 
   const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;
 
@@ -9789,7 +9788,7 @@ export default function EditorPage() {
                       setAba('glebas');
                       setPainelAberto(true);
                     }}
-                    objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
+                    objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPosMapa: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
                     onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                     onCliqueDesenho={onCliqueDesenho} onSelecObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }} onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} onEditarConfrontante={editarConfrontantePlanta}
                     conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={telaEstreita ? Math.min(tamNomes, 8) : tamNomes} tamCentro={telaEstreita ? Math.min(tamCentro, 9) : tamCentro}

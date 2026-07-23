@@ -607,10 +607,11 @@ function MarcadoresRotulos({
           mais perto do vértice (não no centro), como uma linha de chamada de CAD. Desenhada ANTES
           dos marcadores pra ficar por baixo do texto. */}
       {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => {
-        if (!v.posRotulo) return null;
+        const posRot = v.posRotuloMapa ?? v.posRotulo;
+        if (!posRot) return null;
         const texto = formatarNome(v, i);
         const { w, h } = estimarCaixaRotulo(texto, Math.round(tamNomes * fzZoom));
-        const ponta = pontoGuiaMaisPerto(map, [v.lat, v.lon], [v.posRotulo.lat, v.posRotulo.lon], w, h, zoom);
+        const ponta = pontoGuiaMaisPerto(map, [v.lat, v.lon], [posRot.lat, posRot.lon], w, h, zoom);
         return (
           <Polyline
             key={`guia${v.id}`}
@@ -620,50 +621,47 @@ function MarcadoresRotulos({
         );
       })}
 
-      {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => (
-        <Marker
-          key={`nome${v.id}`}
-          position={v.posRotulo ? [v.posRotulo.lat, v.posRotulo.lon] : [v.lat, v.lon]}
-          draggable={modo === 'navegar' && !camadasBloqueadas.divisas}
-          zIndexOffset={1000}
-          icon={iconeNomeVertice(
-            formatarNome(v, i),
-            Math.round(tamNomes * fzZoom),
-            v.posRotulo ? 0 : (dirsRotulo[i]?.[0] ?? 1),
-            v.posRotulo ? 0 : (dirsRotulo[i]?.[1] ?? 0),
-          )}
-          eventHandlers={{
-            click() { if (!camadasBloqueadas.divisas) onSelecionar(v.id); },
-            dragend(e) {
-              const marker = e.target as L.Marker;
-              const ll = marker.getLatLng();
+      {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => {
+        const posRot = v.posRotuloMapa ?? v.posRotulo;
+        return (
+          <Marker
+            key={`nome${v.id}`}
+            position={posRot ? [posRot.lat, posRot.lon] : [v.lat, v.lon]}
+            draggable={modo === 'navegar' && !camadasBloqueadas.divisas}
+            zIndexOffset={1000}
+            icon={iconeNomeVertice(
+              formatarNome(v, i),
+              Math.round(tamNomes * fzZoom),
+              posRot ? 0 : (dirsRotulo[i]?.[0] ?? 1),
+              posRot ? 0 : (dirsRotulo[i]?.[1] ?? 0),
+            )}
+            eventHandlers={{
+              click() { if (!camadasBloqueadas.divisas) onSelecionar(v.id); },
+              dragend(e) {
+                const marker = e.target as L.Marker;
+                const ll = marker.getLatLng();
 
-              // Primeira vez (rótulo ainda SEM posição salva): o ícone é ancorado descentralizado —
-              // deslocado do vértice pela direção de repulsão — então a latlng do marcador NÃO é o
-              // centro visível do rótulo. Antes isso era compensado ESTIMANDO o deslocamento pela
-              // largura do texto (caracteres × fonte), estimativa que erra quando o texto muda e faz o
-              // rótulo PULAR na primeira vez. Agora MEDIMOS o centro real do rótulo renderizado na
-              // tela e salvamos ali — fica exatamente onde foi solto, sem depender de estimativa.
-              if (!v.posRotulo) {
-                const el = (marker as unknown as { _icon?: HTMLElement })._icon;
-                const box = el?.firstElementChild ?? el; // o bloco branco visível (o _icon em si é 1×1)
-                const cont = map.getContainer();
-                if (box && cont) {
-                  const b = box.getBoundingClientRect();
-                  const c = cont.getBoundingClientRect();
-                  const centro = map.containerPointToLatLng(
-                    L.point(b.left - c.left + b.width / 2, b.top - c.top + b.height / 2),
-                  );
-                  onMoverRotuloVertice?.(v.id, centro.lat, centro.lng);
-                  return;
+                if (!posRot) {
+                  const el = (marker as unknown as { _icon?: HTMLElement })._icon;
+                  const box = el?.firstElementChild ?? el; // o bloco branco visível (o _icon em si é 1×1)
+                  const cont = map.getContainer();
+                  if (box && cont) {
+                    const b = box.getBoundingClientRect();
+                    const c = cont.getBoundingClientRect();
+                    const centro = map.containerPointToLatLng(
+                      L.point(b.left - c.left + b.width / 2, b.top - c.top + b.height / 2),
+                    );
+                    onMoverRotuloVertice?.(v.id, centro.lat, centro.lng);
+                    return;
+                  }
                 }
-              }
 
-              onMoverRotuloVertice?.(v.id, ll.lat, ll.lng);
-            },
-          }}
-        />
-      ))}
+                onMoverRotuloVertice?.(v.id, ll.lat, ll.lng);
+              },
+            }}
+          />
+        );
+      })}
     </>
   );
 }

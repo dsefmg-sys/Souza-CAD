@@ -85,7 +85,8 @@ export interface Vertex {
   sigmaX?: number;     // precisão horizontal X (m), lida do TXT
   sigmaY?: number;     // precisão horizontal Y (m), lida do TXT
   sigmaZ?: number;     // precisão vertical Z (m), lida do TXT
-  posRotulo?: { lat: number; lon: number }; // posição manual do rótulo do vértice (arrastado com F5)
+  posRotulo?: { lat: number; lon: number }; // posição manual do rótulo do vértice (legacy)
+  posRotuloMapa?: { lat: number; lon: number }; // posição manual do rótulo no Modo Mapa (independente da Planta)
   // tique de TROCA DE CONFRONTANTE saindo do marco (M): azimute (graus, 0=topo) e comprimento (px da
   // prancha A3). Vazio = padrão (aponta pra fora do polígono, ~4 cm). Ajustável arrastando a ponta.
   divisaConfAz?: number;
@@ -484,7 +485,8 @@ export interface PlantaConfig {
   escalaManual?: number;       // denominador fixo (ex.: 2000); 0/ausente = automática
   offsetX?: number;            // deslocamento da folha em relação ao polígono (px da prancha A3)
   offsetY?: number;
-  centroInfoPos?: { lat: number; lon: number }; // posição (arrastada) do rótulo central do imóvel no mapa
+  centroInfoPos?: { lat: number; lon: number }; // posição (arrastada) do rótulo central do imóvel no mapa (legacy)
+  centroInfoPosMapa?: { lat: number; lon: number }; // posição (arrastada) do rótulo central do imóvel no Modo Mapa (independente da Planta)
   mostrarGrade?: boolean;      // padrão true
   gradeEspacamento?: 'auto' | 'fine' | 'medium' | 'coarse'; // espaçamento das linhas da grade UTM
   gradeCorLinha?: string;      // cor das linhas da grade (padrão '#8a94a6')
