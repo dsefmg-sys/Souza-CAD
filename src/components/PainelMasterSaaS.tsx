@@ -5,11 +5,13 @@ import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const MapaClientesSaaS = dynamic(() => import('@/components/MapaClientesSaaS'), { ssr: false });
 import {
   Users, Crown, RefreshCw, Shield, Sparkles,
-  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send, FolderOpen, X, Waypoints, MapPin, Copy, Plus, Youtube, Cloud
+  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send, FolderOpen, X, Waypoints, MapPin, Copy, Plus, Youtube, Cloud,
+  HelpCircle, Eye, EyeOff, CheckCircle2, AlertCircle, ExternalLink, BookOpen, Key
 } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, limit, query } from 'firebase/firestore';
 import { ufDoMunicipio } from '@/lib/topo/municipios';
@@ -54,6 +56,10 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [mapaSaaSAberto, setMapaSaaSAberto] = useState(false);
   const [smtp, setSmtp] = useState<ConfigSmtp>({});
   const [salvandoSmtp, setSalvandoSmtp] = useState(false);
+  const [testandoSmtp, setTestandoSmtp] = useState(false);
+  const [resultadoTesteSmtp, setResultadoTesteSmtp] = useState<{ ok: boolean; msg: string; orientacao?: string } | null>(null);
+  const [mostrarTutorialSmtp, setMostrarTutorialSmtp] = useState(false);
+  const [verSenhaSmtp, setVerSenhaSmtp] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [msg, setMsg] = useState('');
   const [busca, setBusca] = useState('');
@@ -274,6 +280,43 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       flash('Erro ao salvar as credenciais de e-mail.');
     } finally {
       setSalvandoSmtp(false);
+    }
+  }
+
+  async function testarEnvioSmtp() {
+    if (!smtp.host || !smtp.user || !smtp.pass) {
+      flash('Preencha o Host, E-mail remetente e Senha de app antes de testar.');
+      return;
+    }
+    setTestandoSmtp(true);
+    setResultadoTesteSmtp(null);
+    try {
+      const token = auth() && auth()?.currentUser ? await auth()!.currentUser!.getIdToken() : '';
+      const res = await fetch('/api/saas/testar-smtp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          host: smtp.host,
+          port: smtp.port || '465',
+          user: smtp.user,
+          pass: smtp.pass,
+          from: smtp.from,
+          destinatario: smtp.user
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setResultadoTesteSmtp({ ok: true, msg: data.mensagem });
+      } else {
+        setResultadoTesteSmtp({ ok: false, msg: data.error || 'Falha no disparo de e-mail de teste.', orientacao: data.orientacao });
+      }
+    } catch (e: any) {
+      setResultadoTesteSmtp({ ok: false, msg: e.message || 'Erro de conexão com o servidor.' });
+    } finally {
+      setTestandoSmtp(false);
     }
   }
 
@@ -861,39 +904,169 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
               </div>
 
               {/* Servidor de e-mail (SMTP): credenciais pra disparar comunicados de verdade */}
-              <div className="mt-5 rounded-xl border border-indigo-500/25 bg-indigo-500/5 p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Mail className="size-4 text-indigo-400" />
-                  <span className="text-xs font-bold uppercase tracking-wide text-indigo-300">Servidor de E-mail (SMTP) — para disparar comunicados reais</span>
+              <div className="mt-5 rounded-xl border border-indigo-500/30 bg-indigo-950/20 p-5 space-y-4 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-500/20 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Mail className="size-5 text-indigo-400" />
+                    <span className="text-sm font-extrabold uppercase tracking-wide text-indigo-200">
+                      Configuração do Disparador de E-mail (Servidor SMTP)
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setMostrarTutorialSmtp(true)}
+                    className="text-xs font-bold gap-1.5 border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/20"
+                  >
+                    <BookOpen className="size-4 text-indigo-400" /> Passo a Passo: Como obter a Senha de App
+                  </Button>
                 </div>
-                <p className="text-xs text-zinc-400 leading-snug">
-                  Cole aqui as informações da conta de e-mail que vai disparar os comunicados. Pra Gmail: o host é <code className="text-indigo-300 font-bold">smtp.gmail.com</code>, a porta é <code className="text-indigo-300 font-bold">465</code>, o usuário é o próprio endereço de e-mail, e a senha precisa ser uma &quot;senha de app&quot; gerada nas configurações de segurança do Google.
-                </p>
+
+                {/* Seleção rápida de Provedores (Presets) */}
+                <div className="space-y-1.5">
+                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wide">Preenchimento Rápido por Provedor:</span>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSmtp((s) => ({ ...s, host: 'smtp.gmail.com', port: '465' }))}
+                      className="px-3 py-1.5 rounded-lg border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 text-xs font-bold text-indigo-200 transition-all"
+                    >
+                      Gmail (smtp.gmail.com | 465 SSL)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSmtp((s) => ({ ...s, host: 'smtp-mail.outlook.com', port: '587' }))}
+                      className="px-3 py-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-xs font-bold text-blue-200 transition-all"
+                    >
+                      Outlook / Office365 (smtp-mail.outlook.com | 587 TLS)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSmtp((s) => ({ ...s, host: 'smtp.mail.yahoo.com', port: '465' }))}
+                      className="px-3 py-1.5 rounded-lg border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-xs font-bold text-purple-200 transition-all"
+                    >
+                      Yahoo (smtp.mail.yahoo.com | 465 SSL)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSmtp((s) => ({ ...s, host: 'mail.seu-dominio.com.br', port: '465' }))}
+                      className="px-3 py-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-xs font-bold text-emerald-200 transition-all"
+                    >
+                      cPanel / Webmail Próprio (Porta 465 / 587)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Alerta de Esclarecimento sobre Senha de App */}
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1">
+                  <div className="font-extrabold text-amber-300 flex items-center gap-1.5 uppercase tracking-wide">
+                    <AlertTriangle className="size-4 shrink-0 text-amber-400" /> IMPORTANTE: Qual senha colocar no campo &quot;Senha de app&quot;?
+                  </div>
+                  <p className="text-zinc-300 leading-relaxed">
+                    <strong>NÃO digite a senha pessoal da sua conta de e-mail!</strong> Para sua segurança, o Google (Gmail) e a Microsoft (Outlook) bloqueiam a senha normal. É necessário gerar uma <strong>&quot;Senha de App&quot; de 16 letras</strong> no seu provedor.
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-bold text-zinc-400">Servidor (host)</Label>
-                    <Input placeholder="smtp.gmail.com" value={smtp.host ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, host: e.target.value }))} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700" />
+                    <Label className="text-xs font-bold text-zinc-300">Servidor (Host)</Label>
+                    <Input
+                      placeholder="Ex: smtp.gmail.com"
+                      value={smtp.host ?? ''}
+                      onChange={(e) => setSmtp((s) => ({ ...s, host: e.target.value }))}
+                      className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700"
+                    />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-bold text-zinc-400">Porta</Label>
-                    <Input placeholder="465" value={smtp.port ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, port: e.target.value }))} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700" />
+                    <Label className="text-xs font-bold text-zinc-300">Porta</Label>
+                    <Input
+                      placeholder="465 ou 587"
+                      value={smtp.port ?? ''}
+                      onChange={(e) => setSmtp((s) => ({ ...s, port: e.target.value }))}
+                      className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700 font-mono"
+                    />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-bold text-zinc-400">E-mail remetente</Label>
-                    <Input placeholder="seuemail@provedor.com" value={smtp.user ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, user: e.target.value }))} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700" />
+                    <Label className="text-xs font-bold text-zinc-300">E-mail Remetente (Login)</Label>
+                    <Input
+                      placeholder="seuemail@gmail.com"
+                      value={smtp.user ?? ''}
+                      onChange={(e) => setSmtp((s) => ({ ...s, user: e.target.value }))}
+                      className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700"
+                    />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-bold text-zinc-400">Senha de app</Label>
-                    <Input type="password" placeholder="•••• •••• •••• ••••" value={smtp.pass ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, pass: e.target.value }))} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700" />
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs font-bold text-zinc-300">Senha de App (16 letras)</Label>
+                      <button
+                        type="button"
+                        onClick={() => setVerSenhaSmtp((v) => !v)}
+                        className="text-[10px] text-indigo-400 hover:underline flex items-center gap-1"
+                      >
+                        {verSenhaSmtp ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                        {verSenhaSmtp ? 'Ocultar' : 'Mostrar'}
+                      </button>
+                    </div>
+                    <Input
+                      type={verSenhaSmtp ? 'text' : 'password'}
+                      placeholder="abcd efgh ijkl mnop"
+                      value={smtp.pass ?? ''}
+                      onChange={(e) => setSmtp((s) => ({ ...s, pass: e.target.value }))}
+                      className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700 font-mono"
+                    />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-bold text-zinc-400">Nome de exibição (opcional)</Label>
-                    <Input placeholder="Souza CAD <remetente@provedor.com>" value={smtp.from ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, from: e.target.value }))} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700" />
+                    <Label className="text-xs font-bold text-zinc-300">Nome de Exibição (Opcional)</Label>
+                    <Input
+                      placeholder="Souza CAD <remetente@provedor.com>"
+                      value={smtp.from ?? ''}
+                      onChange={(e) => setSmtp((s) => ({ ...s, from: e.target.value }))}
+                      className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700"
+                    />
                   </div>
                 </div>
-                <Button size="sm" onClick={salvarSmtpConfig} disabled={salvandoSmtp} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-10 px-4">
-                  {salvandoSmtp ? 'Salvando...' : 'Salvar Credenciais de E-mail'}
-                </Button>
+
+                <div className="flex flex-wrap gap-2 pt-2 items-center">
+                  <Button
+                    size="sm"
+                    onClick={salvarSmtpConfig}
+                    disabled={salvandoSmtp}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-10 px-5"
+                  >
+                    {salvandoSmtp ? 'Salvando...' : 'Salvar Configurações SMTP'}
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    onClick={testarEnvioSmtp}
+                    disabled={testandoSmtp || !smtp.host || !smtp.user || !smtp.pass}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-10 px-5 gap-1.5"
+                  >
+                    <Send className="size-4" />
+                    {testandoSmtp ? 'Testando Conexão e Enviando...' : 'Testar Envio de E-mail Agora'}
+                  </Button>
+                </div>
+
+                {/* Resultado do Teste de Envio */}
+                {resultadoTesteSmtp && (
+                  <div className={`p-4 rounded-xl border text-xs space-y-1.5 transition-all ${
+                    resultadoTesteSmtp.ok
+                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200'
+                      : 'bg-red-500/10 border-red-500/40 text-red-200'
+                  }`}>
+                    <div className="font-extrabold text-sm flex items-center gap-1.5">
+                      {resultadoTesteSmtp.ok ? <CheckCircle2 className="size-5 text-emerald-400" /> : <AlertCircle className="size-5 text-red-400" />}
+                      {resultadoTesteSmtp.ok ? 'Sucesso no Teste de Disparo!' : 'Falha na Configuração do E-mail'}
+                    </div>
+                    <p className="font-semibold">{resultadoTesteSmtp.msg}</p>
+                    {resultadoTesteSmtp.orientacao && (
+                      <div className="p-2.5 bg-black/40 rounded-lg border border-red-500/30 text-amber-200 font-sans space-y-1 leading-relaxed">
+                        <strong className="block text-amber-300 uppercase">Como Resolver:</strong>
+                        {resultadoTesteSmtp.orientacao}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1674,6 +1847,67 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
           </div>
         </div>
       )}
+
+      {/* Modal Tutorial Didático de Senha de App SMTP */}
+      <Dialog open={mostrarTutorialSmtp} onOpenChange={setMostrarTutorialSmtp}>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 overflow-y-auto bg-zinc-950 text-white border-zinc-800">
+          <DialogHeader className="border-b border-zinc-800 pb-3">
+            <DialogTitle className="flex items-center gap-2 font-black uppercase text-base text-indigo-400">
+              <BookOpen className="size-5" /> Passo a Passo: Como Obter a Senha de App de E-mail
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 text-xs text-zinc-300 py-3 leading-relaxed">
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200">
+              <strong className="text-amber-300 block uppercase font-bold mb-1">Por que a senha normal não funciona?</strong>
+              Por motivos de segurança cibernética, o Google, a Microsoft e outros grandes provedores impedem o uso direto da senha da sua conta de e-mail em aplicativos externos. É necessário gerar um código de 16 caracteres exclusivo chamado <strong>Senha de App</strong>.
+            </div>
+
+            {/* Tutorial Gmail */}
+            <div className="p-4 border border-indigo-500/30 bg-indigo-500/10 rounded-xl space-y-2">
+              <div className="font-bold text-sm text-indigo-300 flex items-center gap-1.5">
+                <Mail className="size-4 text-indigo-400" /> 1. Como gerar no Google / Gmail (smtp.gmail.com)
+              </div>
+              <ol className="list-decimal pl-4 space-y-1.5 text-zinc-300">
+                <li>Acesse as configurações da sua Conta Google: <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline font-bold">myaccount.google.com/security</a>.</li>
+                <li>Verifique se a <strong>Verificação em duas etapas</strong> está ATIVADA (obrigatório pelo Google).</li>
+                <li>Na barra de busca no topo da página de Segurança Google, digite <strong>&quot;Senhas de app&quot;</strong>.</li>
+                <li>Clique no item &quot;Senhas de app&quot;, selecione um nome para o app (digite <code>Souza CAD</code>) e clique em <strong>Criar</strong>.</li>
+                <li>O Google mostrará uma senha amarela de 16 letras (ex: <code>abcd efgh ijkl mnop</code>).</li>
+                <li><strong>Copie essa senha de 16 letras</strong> e cole no campo &quot;Senha de app&quot; no Souza CAD (Host: <code>smtp.gmail.com</code> | Porta: <code>465</code>).</li>
+              </ol>
+            </div>
+
+            {/* Tutorial Outlook */}
+            <div className="p-4 border border-blue-500/30 bg-blue-500/10 rounded-xl space-y-2">
+              <div className="font-bold text-sm text-blue-300 flex items-center gap-1.5">
+                <Mail className="size-4 text-blue-400" /> 2. Como gerar no Outlook / Hotmail (smtp-mail.outlook.com)
+              </div>
+              <ol className="list-decimal pl-4 space-y-1.5 text-zinc-300">
+                <li>Acesse o painel de segurança da sua conta Microsoft em <a href="https://account.live.com/proofs/manage/additional" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline font-bold">account.live.com/proofs/manage</a>.</li>
+                <li>Procure pela opção <strong>Senhas de aplicativo</strong> e clique em <em>Criar uma nova senha de aplicativo</em>.</li>
+                <li>Copie a senha gerada e cole no campo &quot;Senha de app&quot; (Host: <code>smtp-mail.outlook.com</code> | Porta: <code>587</code>).</li>
+              </ol>
+            </div>
+
+            {/* Tutorial Webmail Próprio */}
+            <div className="p-4 border border-emerald-500/30 bg-emerald-500/10 rounded-xl space-y-2">
+              <div className="font-bold text-sm text-emerald-300 flex items-center gap-1.5">
+                <Mail className="size-4 text-emerald-400" /> 3. E-mail Corporativo / Webmail / cPanel (Hostgator, Locaweb, etc.)
+              </div>
+              <p className="text-zinc-300">
+                Em servidores de hospedagem próprios, você utiliza a própria senha da conta de e-mail criada no cPanel (ex: <code>contato@seudominio.com.br</code>). O Host é geralmente <code>mail.seudominio.com.br</code> e a Porta é <code>465</code> (SSL) ou <code>587</code> (TLS).
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-zinc-800 flex justify-end">
+            <Button className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs" onClick={() => setMostrarTutorialSmtp(false)}>
+              Entendi, Fechar Tutorial
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
