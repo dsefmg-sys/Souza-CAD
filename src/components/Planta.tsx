@@ -179,110 +179,316 @@ function BalaoRotuloModoB({
   tProps: any;
   ovR: any;
 }) {
-  const hasCustomDrag = ovR?.dx != null || ovR?.dy != null;
-  const charW = fz * 0.62;
-  const padX = 4.5;
-  const padY = 2.5;
-  const boxW = Math.max(fz * 1.8, rot.length * charW + padX * 2);
-  const boxH = fz + padY * 2;
+  const id = tProps?.id || '';
+  const ed = tProps?.ed;
+  const onStartEdit = tProps?.onStartEdit;
+  const onSelect = tProps?.onSelect;
+  const onDragStart = tProps?.onDragStart;
+  const editando = tProps?.editando;
+  const onTerminarEditar = tProps?.onTerminarEditar;
 
-  let bx: number, by: number;
-  if (hasCustomDrag) {
-    bx = vx + ovR.dx;
-    by = vy + ovR.dy;
-  } else {
-    // Distância base entre o vértice e a janela de texto
-    const gap = 11;
-    if (ox >= 0) {
-      bx = vx + gap;
-    } else {
-      bx = vx - gap - boxW;
-    }
-    if (oy <= 0) {
-      by = vy - gap - boxH * 0.5;
-    } else {
-      by = vy + gap - boxH * 0.5;
-    }
+  const conteudo = (ovR?.texto !== undefined && ovR?.texto !== null && ovR.texto.trim() !== '') ? ovR.texto : rot;
+  const effectiveFz = +(fz * (ovR?.escala ?? 1)).toFixed(2);
+  const peso = (ovR?.negrito) ? 'bold' : 'normal';
+
+  const lines = (conteudo || '').split('\n');
+  const maxLineLength = Math.max(...lines.map((l: string) => l.length), 1);
+  const padX = 5;
+  const padY = 3;
+  const charW = effectiveFz * 0.62;
+  const boxW = Math.max(effectiveFz * 1.8, maxLineLength * charW + padX * 2);
+  const lineH = effectiveFz * 1.25;
+  const textH = effectiveFz + (lines.length - 1) * lineH;
+  const boxH = textH + padY * 2;
+
+  // Distância base curta (colado ao vértice)
+  const gap = 6;
+  let baseBx = ox >= 0 ? vx + gap : vx - gap - boxW;
+  let baseBy = oy <= 0 ? vy - gap - boxH : vy + gap;
+
+  // Aplica o deslocamento de arrasto do usuário UMA ÚNICA VEZ
+  const bx = baseBx + (ovR?.dx ?? 0);
+  const by = baseBy + (ovR?.dy ?? 0);
+
+  // Se estiver no modo de edição de texto
+  if (editando) {
+    const inputW = Math.max(140, effectiveFz * maxLineLength * 0.65);
+    const inputH = Math.max(54, effectiveFz * lines.length * 1.35 + 24);
+    return (
+      <foreignObject x={bx} y={by} width={inputW} height={inputH} style={{ overflow: 'visible' }}>
+        <textarea
+          autoFocus
+          className="w-full h-full border border-blue-500 bg-white text-black outline-none px-1 py-0.5 shadow-md rounded-sm resize-y"
+          style={{ fontSize: `${effectiveFz}px`, fontWeight: peso, fontFamily: 'Arial, Helvetica, sans-serif', lineHeight: 1.25 }}
+          defaultValue={conteudo}
+          onBlur={(e) => onTerminarEditar?.(id, e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              onTerminarEditar?.(id, e.currentTarget.value);
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              onTerminarEditar?.(id, conteudo);
+            }
+          }}
+        />
+      </foreignObject>
+    );
   }
 
-  // Ponto central da caixa retangular
+  // Ponto central da caixa do balão
   const cx = bx + boxW / 2;
   const cy = by + boxH / 2;
 
   const dx = vx - cx;
   const dy = vy - cy;
 
-  // Largura da cauda na borda do retângulo
-  const tailW = Math.min(7, boxH * 0.55);
+  // Base do rabicho (cauda do balão) na borda do retângulo
+  const tailW = Math.min(6, boxH * 0.45);
   let p1x = bx, p1y = by;
   let p2x = bx, p2y = by;
 
   if (Math.abs(dx) * boxH > Math.abs(dy) * boxW) {
     if (dx < 0) {
-      // Conecta pelo lado esquerdo da caixa (bx)
-      const midY = Math.max(by + tailW, Math.min(by + boxH - tailW, vy));
+      // Conecta no lado esquerdo da caixa (bx)
+      const midY = Math.max(by + tailW + 1, Math.min(by + boxH - tailW - 1, vy));
       p1x = bx; p1y = midY - tailW / 2;
       p2x = bx; p2y = midY + tailW / 2;
     } else {
-      // Conecta pelo lado direito da caixa (bx + boxW)
-      const midY = Math.max(by + tailW, Math.min(by + boxH - tailW, vy));
+      // Conecta no lado direito da caixa (bx + boxW)
+      const midY = Math.max(by + tailW + 1, Math.min(by + boxH - tailW - 1, vy));
       p1x = bx + boxW; p1y = midY - tailW / 2;
       p2x = bx + boxW; p2y = midY + tailW / 2;
     }
   } else {
     if (dy < 0) {
-      // Conecta pelo topo da caixa (by)
-      const midX = Math.max(bx + tailW, Math.min(bx + boxW - tailW, vx));
+      // Conecta no topo da caixa (by)
+      const midX = Math.max(bx + tailW + 1, Math.min(bx + boxW - tailW - 1, vx));
       p1x = midX - tailW / 2; p1y = by;
       p2x = midX + tailW / 2; p2y = by;
     } else {
-      // Conecta pela base da caixa (by + boxH)
-      const midX = Math.max(bx + tailW, Math.min(bx + boxW - tailW, vx));
+      // Conecta na base da caixa (by + boxH)
+      const midX = Math.max(bx + tailW + 1, Math.min(bx + boxW - tailW - 1, vx));
       p1x = midX - tailW / 2; p1y = by + boxH;
       p2x = midX + tailW / 2; p2y = by + boxH;
     }
   }
 
-  // Ponta da cauda encosta no símbolo do vértice
-  const distV = Math.hypot(vx - cx, vy - cy) || 1;
-  const tipX = vx + ((cx - vx) / distV) * 3.5;
-  const tipY = vy + ((cy - vy) / distV) * 3.5;
+  // Ponta da cauda encosta no centro do vértice (vx, vy)
+  const tipX = vx;
+  const tipY = vy;
 
   return (
-    <g className="rotulo-balao-modo-b">
-      {/* Rabicho do balão conectando a janela ao vértice */}
+    <g
+      id={id}
+      className="rotulo-balao-modo-b"
+      style={ed ? { cursor: 'move' } : undefined}
+      onClick={ed ? (e) => { e.stopPropagation(); onSelect?.(id); } : undefined}
+      onDoubleClick={ed ? (e) => { e.stopPropagation(); onStartEdit?.(id, conteudo); } : undefined}
+      onPointerDown={ed ? (e) => { e.stopPropagation(); onDragStart?.(id, e); } : undefined}
+    >
+      {/* Hitbox invisível para captura suave de clique/arraste */}
+      <rect
+        x={bx - 3}
+        y={by - 3}
+        width={boxW + 6}
+        height={boxH + 6}
+        fill="#ffffff"
+        fillOpacity={0.001}
+        style={{ pointerEvents: 'all' }}
+      />
+      {/* Rabicho (cauda do balão) ligando a janela ao vértice */}
       <polygon
         points={`${tipX.toFixed(1)},${tipY.toFixed(1)} ${p1x.toFixed(1)},${p1y.toFixed(1)} ${p2x.toFixed(1)},${p2y.toFixed(1)}`}
         fill="#ffffff"
-        stroke="#334155"
+        stroke="#0f172a"
         strokeWidth={0.75}
         strokeLinejoin="round"
       />
-      {/* Retângulo do balão de texto */}
+      {/* Retângulo da janela do balão */}
       <rect
         x={bx.toFixed(1)}
         y={by.toFixed(1)}
         width={boxW.toFixed(1)}
         height={boxH.toFixed(1)}
-        rx={3.5}
-        ry={3.5}
+        rx={3}
+        ry={3}
         fill="#ffffff"
-        stroke="#334155"
-        strokeWidth={0.75}
+        stroke="#0f172a"
+        strokeWidth={0.85}
       />
-      {/* Texto do vértice posicionado na janela de texto */}
-      <Ted
+      {/* Texto perfeitamente alinhado e centralizado DENTRO do balão */}
+      <text
         x={bx + padX}
-        y={by + padY + fz * 0.76}
-        base={rot}
-        size={fz}
-        anchor="start"
+        y={by + padY + effectiveFz * 0.78}
+        fontSize={effectiveFz}
+        fontWeight={peso}
         fill="#0f172a"
-        weight="bold"
-        halo={false}
-        fundoBranco={false}
-        {...tProps}
+        fontFamily="Arial, Helvetica, sans-serif"
+        style={{ userSelect: 'none', pointerEvents: 'none' }}
+      >
+        {lines.map((line: string, idx: number) => (
+          <tspan key={idx} x={bx + padX} dy={idx === 0 ? 0 : lineH}>
+            {line}
+          </tspan>
+        ))}
+      </text>
+    </g>
+  );
+}
+
+/** Renders a modern CAD Tag/Pill badge ("etiqueta pílula escura de alta visibilidade") for Modo C. */
+function TagRotuloModoC({
+  vx,
+  vy,
+  ox,
+  oy,
+  rot,
+  fz,
+  tProps,
+  ovR,
+}: {
+  vx: number;
+  vy: number;
+  ox: number;
+  oy: number;
+  rot: string;
+  fz: number;
+  tProps: any;
+  ovR: any;
+}) {
+  const id = tProps?.id || '';
+  const ed = tProps?.ed;
+  const onStartEdit = tProps?.onStartEdit;
+  const onSelect = tProps?.onSelect;
+  const onDragStart = tProps?.onDragStart;
+  const editando = tProps?.editando;
+  const onTerminarEditar = tProps?.onTerminarEditar;
+
+  const conteudo = (ovR?.texto !== undefined && ovR?.texto !== null && ovR.texto.trim() !== '') ? ovR.texto : rot;
+  const effectiveFz = +(fz * (ovR?.escala ?? 1)).toFixed(2);
+  const peso = (ovR?.negrito ?? true) ? 'bold' : 'normal';
+
+  const lines = (conteudo || '').split('\n');
+  const maxLineLength = Math.max(...lines.map((l: string) => l.length), 1);
+  const padX = 5.5;
+  const padY = 3.5;
+  const charW = effectiveFz * 0.62;
+  const boxW = Math.max(effectiveFz * 1.8, maxLineLength * charW + padX * 2);
+  const lineH = effectiveFz * 1.25;
+  const textH = effectiveFz + (lines.length - 1) * lineH;
+  const boxH = textH + padY * 2;
+
+  const gap = 5;
+  let baseBx = ox >= 0 ? vx + gap : vx - gap - boxW;
+  let baseBy = oy <= 0 ? vy - gap - boxH : vy + gap;
+
+  const bx = baseBx + (ovR?.dx ?? 0);
+  const by = baseBy + (ovR?.dy ?? 0);
+
+  if (editando) {
+    const inputW = Math.max(140, effectiveFz * maxLineLength * 0.65);
+    const inputH = Math.max(54, effectiveFz * lines.length * 1.35 + 24);
+    return (
+      <foreignObject x={bx} y={by} width={inputW} height={inputH} style={{ overflow: 'visible' }}>
+        <textarea
+          autoFocus
+          className="w-full h-full border border-sky-500 bg-slate-900 text-white outline-none px-1 py-0.5 shadow-md rounded-sm resize-y"
+          style={{ fontSize: `${effectiveFz}px`, fontWeight: peso, fontFamily: 'Arial, Helvetica, sans-serif', lineHeight: 1.25 }}
+          defaultValue={conteudo}
+          onBlur={(e) => onTerminarEditar?.(id, e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              onTerminarEditar?.(id, e.currentTarget.value);
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              onTerminarEditar?.(id, conteudo);
+            }
+          }}
+        />
+      </foreignObject>
+    );
+  }
+
+  // Ponto da etiqueta mais próximo do vértice para a micro-linha de conexão
+  const cx = bx + boxW / 2;
+  const cy = by + boxH / 2;
+  const dx = vx - cx;
+  const dy = vy - cy;
+  let pinX = bx + boxW / 2;
+  let pinY = by + boxH / 2;
+  if (Math.abs(dx) * boxH > Math.abs(dy) * boxW) {
+    pinX = dx < 0 ? bx : bx + boxW;
+    pinY = Math.max(by + 2, Math.min(by + boxH - 2, vy));
+  } else {
+    pinX = Math.max(bx + 2, Math.min(bx + boxW - 2, vx));
+    pinY = dy < 0 ? by : by + boxH;
+  }
+
+  return (
+    <g
+      id={id}
+      className="rotulo-tag-modo-c"
+      style={ed ? { cursor: 'move' } : undefined}
+      onClick={ed ? (e) => { e.stopPropagation(); onSelect?.(id); } : undefined}
+      onDoubleClick={ed ? (e) => { e.stopPropagation(); onStartEdit?.(id, conteudo); } : undefined}
+      onPointerDown={ed ? (e) => { e.stopPropagation(); onDragStart?.(id, e); } : undefined}
+    >
+      {/* Hitbox para facilitar clique */}
+      <rect
+        x={bx - 3}
+        y={by - 3}
+        width={boxW + 6}
+        height={boxH + 6}
+        fill="#ffffff"
+        fillOpacity={0.001}
+        style={{ pointerEvents: 'all' }}
       />
+      {/* Linha fina de ancoragem conectando o vértice ao pino da etiqueta */}
+      <line
+        x1={vx.toFixed(1)}
+        y1={vy.toFixed(1)}
+        x2={pinX.toFixed(1)}
+        y2={pinY.toFixed(1)}
+        stroke="#38bdf8"
+        strokeWidth={0.8}
+      />
+      {/* Ponto azul de pino no centro do vértice */}
+      <circle
+        cx={vx.toFixed(1)}
+        cy={vy.toFixed(1)}
+        r={1.8}
+        fill="#38bdf8"
+      />
+      {/* Corpo da tag pílula escura */}
+      <rect
+        x={bx.toFixed(1)}
+        y={by.toFixed(1)}
+        width={boxW.toFixed(1)}
+        height={boxH.toFixed(1)}
+        rx={4}
+        ry={4}
+        fill="#0f172a"
+        stroke="#38bdf8"
+        strokeWidth={0.7}
+      />
+      {/* Texto branco de alta visibilidade */}
+      <text
+        x={bx + padX}
+        y={by + padY + effectiveFz * 0.78}
+        fontSize={effectiveFz}
+        fontWeight={peso}
+        fill="#ffffff"
+        fontFamily="Arial, Helvetica, sans-serif"
+        style={{ userSelect: 'none', pointerEvents: 'none' }}
+      >
+        {lines.map((line: string, idx: number) => (
+          <tspan key={idx} x={bx + padX} dy={idx === 0 ? 0 : lineH}>
+            {line}
+          </tspan>
+        ))}
+      </text>
     </g>
   );
 }
@@ -2607,8 +2813,8 @@ export default function Planta({
               )}
             </g>
             {config.mostrarRotulosPlanta !== false && (() => {
-              const isModoB = config.modoRotulosPlanta === 'proximo';
-              if (isModoB) return null; // Modo B usa balão de fala conectado (BalaoRotuloModoB)
+              const modoRot = config.modoRotulosPlanta || 'chamada';
+              if (modoRot !== 'chamada') return null; // Modo B e C usam balões/tags conectados
               const ovR = getOverride(`vert.${v.id}`);
               const lxr = (ovR?.dx != null) ? vx + ovR.dx : x + (ovR.dx ?? 0);
               const lyr = (ovR?.dy != null) ? vy + ovR.dy : y + (ovR.dy ?? 0);
@@ -2624,14 +2830,30 @@ export default function Planta({
               return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={alvoX - ux * 3} y2={midY - uy * 3} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
             })()}
             {config.mostrarRotulosPlanta !== false && (() => {
-              const isModoB = config.modoRotulosPlanta === 'proximo';
+              const modoRot = config.modoRotulosPlanta || 'chamada';
               const ovR = getOverride(`vert.${v.id}`);
               const rot = nomeVertice(v, i);
 
-              if (isModoB) {
+              if (modoRot === 'proximo') {
                 const fz = Math.max(5.5, (fonteRot - 0.5) * 0.85);
                 return (
                   <BalaoRotuloModoB
+                    vx={vx}
+                    vy={vy}
+                    ox={ox}
+                    oy={oy}
+                    rot={rot}
+                    fz={fz}
+                    ovR={ovR}
+                    tProps={tProps(`vert.${v.id}`)}
+                  />
+                );
+              }
+
+              if (modoRot === 'direto') {
+                const fz = Math.max(5.5, (fonteRot - 0.5) * 0.85);
+                return (
+                  <TagRotuloModoC
                     vx={vx}
                     vy={vy}
                     ox={ox}
@@ -2739,7 +2961,7 @@ export default function Planta({
                 <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} corCustom={v.tipo === 'M' ? config.corVerticeM : v.tipo === 'P' ? config.corVerticeP : undefined} />
               )}
               {/* Linha guia e Ted se mostrarRotulosPlanta */}
-              {config.mostrarRotulosPlanta !== false && !isModoB && (() => {
+              {config.mostrarRotulosPlanta !== false && (config.modoRotulosPlanta || 'chamada') === 'chamada' && (() => {
                 const ovR = getOverride(`vert.${v.id}`);
                 const lxr = rx + (ovR.dx ?? 0), lyr = ry + (ovR.dy ?? 0);
                 const fzr = Math.max(6, fonteRot - 0.5) * (ovR.escala ?? 1);
@@ -2753,8 +2975,19 @@ export default function Planta({
                 return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={alvoX - ux * 3} y2={midY - uy * 3} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
               })()}
               {config.mostrarRotulosPlanta !== false && (
-                isModoB ? (
+                config.modoRotulosPlanta === 'proximo' ? (
                   <BalaoRotuloModoB
+                    vx={vx}
+                    vy={vy}
+                    ox={(vx - gcx) / (Math.hypot(vx - gcx, vy - gcy) || 1)}
+                    oy={(vy - gcy) / (Math.hypot(vx - gcx, vy - gcy) || 1)}
+                    rot={rot}
+                    fz={Math.max(5.5, (fonteRot - 0.5) * 0.85)}
+                    ovR={getOverride(`vert.${v.id}`)}
+                    tProps={tProps(`vert.${v.id}`)}
+                  />
+                ) : config.modoRotulosPlanta === 'direto' ? (
+                  <TagRotuloModoC
                     vx={vx}
                     vy={vy}
                     ox={(vx - gcx) / (Math.hypot(vx - gcx, vy - gcy) || 1)}
