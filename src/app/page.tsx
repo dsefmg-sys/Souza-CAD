@@ -5001,7 +5001,9 @@ export default function EditorPage() {
     setTimeout(() => {
       const svg = document.getElementById('planta-svg') as SVGSVGElement | null;
       if (!svg) { aviso('Abra a planta e tente de novo.'); return; }
-      const xml = new XMLSerializer().serializeToString(svg);
+      const clone = svg.cloneNode(true) as SVGSVGElement;
+      clone.querySelectorAll('.nao-imprimir, .no-print').forEach((el) => el.remove());
+      const xml = new XMLSerializer().serializeToString(clone);
       const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
       const img = new Image();
       img.onload = () => {
@@ -5066,6 +5068,7 @@ export default function EditorPage() {
   @page { size: ${formatoFinal === 'a4' ? '297mm 210mm' : '420mm 297mm'} landscape !important; margin: 0 !important; }
   #planta-print { width: 100vw !important; height: 100vh !important; }
   #planta-print svg { width: 100% !important; height: 100% !important; }
+  .nao-imprimir, .no-print { display: none !important; visibility: hidden !important; opacity: 0 !important; }
 }`;
     setTimeout(() => {
       window.print();
@@ -5212,7 +5215,9 @@ export default function EditorPage() {
       setTimeout(() => {
         const svg = document.getElementById('planta-svg') as SVGSVGElement | null;
         if (!svg) { resolve(null); return; }
-        const xml = new XMLSerializer().serializeToString(svg);
+        const clone = svg.cloneNode(true) as SVGSVGElement;
+        clone.querySelectorAll('.nao-imprimir, .no-print').forEach((el) => el.remove());
+        const xml = new XMLSerializer().serializeToString(clone);
         const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
         const img = new Image();
         img.onload = () => {
