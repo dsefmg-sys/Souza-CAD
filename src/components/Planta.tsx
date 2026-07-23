@@ -1779,6 +1779,34 @@ export default function Planta({
         );
       })}
 
+      {/* ---------- LINHAS DE CONFRONTANTES (para dentro do polígono, com a cor de cada confrontante) ---------- */}
+      {confrontantePorLado && vertices.map((v, i) => {
+        const confId = confrontantePorLado[i];
+        if (!confId) return null;
+        const conf = confrontantes.find((c) => c.id === confId);
+        if (!conf) return null;
+        const a = anel[i], b = anel[(i + 1) % anel.length];
+        if (!a || !b) return null;
+        let nx = -(b.y - a.y), ny = b.x - a.x;
+        const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        if ((mx - cx) * nx + (my - cy) * ny < 0) { nx = -nx; ny = -ny; }
+        const inOff = -4.5;
+        const ax = a.x + nx * inOff, ay = a.y + ny * inOff, bx = b.x + nx * inOff, by = b.y + ny * inOff;
+        const corConf = corPorConfrontante(conf.id, conf);
+        return (
+          <line
+            key={`conf-seg-planta-${v.id}-${i}`}
+            x1={ax} y1={ay} x2={bx} y2={by}
+            stroke={corConf}
+            strokeWidth={3}
+            strokeDasharray="6 4"
+            strokeLinecap="round"
+            opacity={0.9}
+          />
+        );
+      })}
+
       </g>
 
       {/* ---------- QUADRO DE ÁREAS (resumo de todos os polígonos; arrastável) ---------- */}
@@ -2312,18 +2340,15 @@ export default function Planta({
               folhaLast.current = u;
               captura(e);
             } : undefined}>
-            {/* Linha de chamada (Leader Line) pontilhada na cor do confrontante ligando a divisa à caixa de assinatura */}
-            {r.segCenterX !== undefined && r.segCenterY !== undefined && (
-              <line
-                x1={r.segCenterX}
-                y1={r.segCenterY}
-                x2={px}
-                y2={py}
-                stroke={corConf}
-                strokeWidth={1.2}
-                strokeDasharray="4 4"
-                opacity={0.8}
-                pointerEvents="none"
+            {/* Bolinha indicadora com a cor do confrontante para identificação na tela (não sai na impressão) */}
+            {editavel && (
+              <circle
+                cx={px - half - 2}
+                cy={top + 8}
+                r={4.5}
+                fill={corConf}
+                className="nao-imprimir"
+                style={{ pointerEvents: 'none' }}
               />
             )}
             <rect
@@ -2332,10 +2357,9 @@ export default function Planta({
               width={boxW}
               height={boxH}
               fill="#ffffff"
-              fillOpacity={0.96}
-              stroke={corConf}
-              strokeWidth={1.2}
-              strokeDasharray="4 4"
+              fillOpacity={0.98}
+              stroke="#cbd5e1"
+              strokeWidth={0.7}
               rx={4}
               ry={4}
               style={{ pointerEvents: 'all' }}

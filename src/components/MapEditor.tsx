@@ -2078,8 +2078,9 @@ export default function MapEditor(props: Props) {
         let posLon: number;
 
         if (c.posUtmRelativo && vA && vB) {
-          const centroUtm = geoParaUtm(centroLat, centroLon, zona, hemisferio);
-          const posGeo = utmParaGeo(centroUtm.leste + c.posUtmRelativo.dLeste, centroUtm.norte + c.posUtmRelativo.dNorte, zona, hemisferio);
+          const centroLeste = (vA.leste + vB.leste) / 2;
+          const centroNorte = (vA.norte + vB.norte) / 2;
+          const posGeo = utmParaGeo(centroLeste + c.posUtmRelativo.dLeste, centroNorte + c.posUtmRelativo.dNorte, zona, hemisferio);
           posLat = posGeo.lat;
           posLon = posGeo.lon;
         } else if (c.posRotuloRelativo) {
@@ -2148,10 +2149,11 @@ export default function MapEditor(props: Props) {
                 dragend: (e) => {
                   const marker = e.target;
                   const newPos = marker.getLatLng();
-                  const centroUtm = geoParaUtm(centroLat, centroLon, zona, hemisferio);
+                  const cLeste = vA && vB ? (vA.leste + vB.leste) / 2 : geoParaUtm(centroLat, centroLon, zona, hemisferio).leste;
+                  const cNorte = vA && vB ? (vA.norte + vB.norte) / 2 : geoParaUtm(centroLat, centroLon, zona, hemisferio).norte;
                   const newUtm = geoParaUtm(newPos.lat, newPos.lng, zona, hemisferio);
-                  const dLeste = newUtm.leste - centroUtm.leste;
-                  const dNorte = newUtm.norte - centroUtm.norte;
+                  const dLeste = newUtm.leste - cLeste;
+                  const dNorte = newUtm.norte - cNorte;
                   onMoverRotulo?.(c.id, newPos.lat, newPos.lng, dLeste, dNorte);
                 },
               }}
