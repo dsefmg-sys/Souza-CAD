@@ -102,13 +102,15 @@ service cloud.firestore {
     // mais enxerga ou adivinha convite de outra empresa.
     match /convites/{email} {
       allow read: if request.auth != null && (
-        (request.auth.token.email != null && request.auth.token.email.lower() == email)
-        || (resource != null && resource.data.get('empresaUid', null) == request.auth.uid)
+        resource == null
+        || (request.auth.token.email != null && request.auth.token.email.lower() == email)
+        || (resource.data.get('empresaUid', null) == request.auth.uid)
         || ehMaster()
       );
       allow create: if request.auth != null && request.resource.data.empresaUid == request.auth.uid;
       allow delete: if request.auth != null && (
-        resource.data.get('empresaUid', null) == request.auth.uid
+        resource == null
+        || resource.data.get('empresaUid', null) == request.auth.uid
         || (request.auth.token.email != null && request.auth.token.email.lower() == email)
         || ehMaster()
       );
@@ -123,9 +125,10 @@ service cloud.firestore {
     // os pedidos endereçados ao PRÓPRIO e-mail (alvoEmail); o solicitante lê/cancela o seu.
     match /solicitacoesVinculo/{email} {
       allow read: if request.auth != null && (
-        ehMaster()
+        resource == null
+        || ehMaster()
         || (request.auth.token.email != null && request.auth.token.email.lower() == email)
-        || (resource != null && request.auth.token.email != null
+        || (request.auth.token.email != null
             && string(resource.data.get('alvoEmail', '')).lower() == request.auth.token.email.lower())
       );
       // Só cria o pedido em nome de si mesmo (id == seu e-mail, solicitanteUid == seu uid).
@@ -135,9 +138,10 @@ service cloud.firestore {
         && request.resource.data.solicitanteUid == request.auth.uid;
       // Apaga: o próprio solicitante (cancelar) ou o dono-alvo (ao aprovar/recusar).
       allow delete: if request.auth != null && (
-        ehMaster()
+        resource == null
+        || ehMaster()
         || (request.auth.token.email != null && request.auth.token.email.lower() == email)
-        || (resource != null && request.auth.token.email != null
+        || (request.auth.token.email != null
             && string(resource.data.get('alvoEmail', '')).lower() == request.auth.token.email.lower())
       );
       allow update: if false;
