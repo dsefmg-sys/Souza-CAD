@@ -8334,8 +8334,15 @@ export default function EditorPage() {
               <Atalho k="F1" />
             </Button>
             <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
-            <Etapa st={etapas.txt} tituloEtapa="1. Importação de Pontos" explicacao="Carregue as coordenadas obtidas no campo (TXT/CSV). O sistema lê altitudes, códigos SIGEF e plota o perímetro no mapa de satélite automaticamente.">
-              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_IMPORT} gap-0.5`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}>
+            <Etapa st={etapas.txt} tituloEtapa="1. Importação & Gestão de Vértices" explicacao="Carregue as coordenadas obtidas no campo (TXT/CSV) ou gerencie os vértices do polígono (considerados, ignorados e glebas).">
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_IMPORT} gap-0.5`} disabled={processando} title="Gerenciar vértices ou importar arquivo TXT/CSV do GNSS (F2)" onClick={() => {
+                if (vertices.length > 0 || verticesIgnorados.length > 0) {
+                  setPainelAberto(true);
+                  setAba('vertices');
+                } else {
+                  iniciarImportTxt();
+                }
+              }}>
                 <Upload /> PONTOS
                 <Atalho k="F2" />
               </Button>
@@ -9511,8 +9518,31 @@ export default function EditorPage() {
                     <Button size="sm" variant="outline" onClick={() => setGestaoAberta(true)} title="Gestão financeira"><Info className="size-4" /></Button>
                     <Button size="sm" variant="outline" onClick={abrirGestaoPontos} title="Banco de pontos"><Database className="size-4" /></Button>
                     </>)}
+
+                    {/* EDITAR POLÍGONOS EXISTENTES (Azul Médio) - Disponível em TODOS os perfis (inclusive Fácil) */}
+                    <div className="my-1 border-y border-blue-500/30 py-1 flex flex-col gap-1 bg-blue-500/5 dark:bg-blue-500/10 rounded-md">
+                      <div className="text-[8px] font-black text-blue-600 dark:text-blue-400 text-center uppercase tracking-tighter leading-none px-0.5" title="Editar polígonos existentes">POLÍGONO</div>
+                      <Button
+                        size="sm"
+                        variant={modo === 'ignorar' ? 'default' : 'outline'}
+                        onClick={() => alternarModo('ignorar')}
+                        title="Ignorar Vértice (Editar polígonos existentes: clique no vértice para tirar do polígono)"
+                        className={`!size-9 ${modo === 'ignorar' ? 'bg-blue-600 text-white font-bold ring-2 ring-blue-500 hover:bg-blue-700' : 'border-blue-500/40 text-blue-600 dark:text-blue-400 hover:bg-blue-500/15'}`}
+                      >
+                        <EyeOff className="size-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={modo === 'considerar' ? 'default' : 'outline'}
+                        onClick={() => alternarModo('considerar')}
+                        title="Considerar Vértice (Editar polígonos existentes: clique no ponto ignorado para devolver ao polígono)"
+                        className={`!size-9 ${modo === 'considerar' ? 'bg-blue-600 text-white font-bold ring-2 ring-blue-500 hover:bg-blue-700' : 'border-blue-500/40 text-blue-600 dark:text-blue-400 hover:bg-blue-500/15'}`}
+                      >
+                        <Eye className="size-4" />
+                      </Button>
+                    </div>
+
                     {medioOuMais && (<>
-                    <div className="h-px bg-border my-1" />
                     <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => alternarModo('linha', true)} title="Linha reta (F6)"><PenTool /><Atalho k="F6" /></Button>
                     <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => alternarModo('polilinha', true)} title="Polilinha (F7)"><PenTool /><Atalho k="F7" /></Button>
                     <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => alternarModo('tracejado', true)} title="Tracejado (F8)"><PenTool className="opacity-70" /><Atalho k="F8" /></Button>
@@ -9525,8 +9555,6 @@ export default function EditorPage() {
                     )}
                     <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></Button>
                     <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => alternarModo('inserir')} title="Inserir vértice"><Plus /></Button>
-                    <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => alternarModo('considerar')} title="Considerar"><Plus /></Button>
-                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => alternarModo('ignorar')} title="Ignorar"><EyeOff /></Button>
                     <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => alternarModo('apagar')} title="Apagar vértice"><Trash2 /></Button>
                     <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => alternarModo('medir', true)} title="Medir / Régua"><Ruler /></Button>
                     <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => alternarModo('multi')} title="Selecionar vários">
@@ -11455,43 +11483,63 @@ export default function EditorPage() {
               </div>
               
               {/* Seletor Visual Ativos / Lixeira */}
-              <div className="flex items-center bg-secondary/80 p-0.5 rounded-lg border text-xs">
+              <div className="flex items-center bg-zinc-200/80 dark:bg-zinc-800/90 p-0.5 rounded-lg border border-zinc-300 dark:border-zinc-700 text-xs">
                 <button
                   type="button"
                   onClick={() => setVisaoProjetos('ativos')}
-                  className={`px-3 py-1 rounded-md font-bold uppercase transition-all ${visaoProjetos === 'ativos' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`px-3 py-1 rounded-md font-bold uppercase transition-all ${
+                    visaoProjetos === 'ativos'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-zinc-700 dark:text-zinc-300 hover:text-foreground'
+                  }`}
                 >
                   Ativos ({projetos.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setVisaoProjetos('lixeira')}
-                  className={`px-3 py-1 rounded-md font-bold uppercase transition-all ${visaoProjetos === 'lixeira' ? 'bg-destructive text-destructive-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`px-3 py-1 rounded-md font-bold uppercase transition-all ${
+                    visaoProjetos === 'lixeira'
+                      ? 'bg-red-600 text-white shadow-xs'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400'
+                  }`}
                 >
                   Lixeira ({lixeira.length})
                 </button>
               </div>
 
               {/* Filtro por Natureza Geodésica */}
-              <div className="flex items-center bg-secondary/80 p-0.5 rounded-lg border text-xs">
+              <div className="flex items-center bg-zinc-200/80 dark:bg-zinc-800/90 p-0.5 rounded-lg border border-zinc-300 dark:border-zinc-700 text-xs">
                 <button
                   type="button"
                   onClick={() => setFiltroGeodesico('todos')}
-                  className={`px-2.5 py-1 rounded-md font-bold uppercase transition-all ${filtroGeodesico === 'todos' ? 'bg-indigo-600 text-white shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`px-2.5 py-1 rounded-md font-bold uppercase transition-all ${
+                    filtroGeodesico === 'todos'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-zinc-700 dark:text-zinc-300 hover:text-foreground'
+                  }`}
                 >
                   Todos
                 </button>
                 <button
                   type="button"
                   onClick={() => setFiltroGeodesico('sigef')}
-                  className={`px-2.5 py-1 rounded-md font-bold uppercase transition-all flex items-center gap-1 ${filtroGeodesico === 'sigef' ? 'bg-emerald-600 text-white shadow-xs' : 'text-emerald-600 dark:text-emerald-400 hover:text-foreground'}`}
+                  className={`px-2.5 py-1 rounded-md font-bold uppercase transition-all flex items-center gap-1 ${
+                    filtroGeodesico === 'sigef'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300'
+                  }`}
                 >
                   🛰️ SIGEF ({projetos.filter(p => identificarNaturezaGeodesica(p) === 'sigef').length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setFiltroGeodesico('convencional')}
-                  className={`px-2.5 py-1 rounded-md font-bold uppercase transition-all flex items-center gap-1 ${filtroGeodesico === 'convencional' ? 'bg-blue-600 text-white shadow-xs' : 'text-blue-600 dark:text-blue-400 hover:text-foreground'}`}
+                  className={`px-2.5 py-1 rounded-md font-bold uppercase transition-all flex items-center gap-1 ${
+                    filtroGeodesico === 'convencional'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'
+                  }`}
                 >
                   📐 Convencional ({projetos.filter(p => identificarNaturezaGeodesica(p) === 'convencional').length})
                 </button>
