@@ -117,6 +117,19 @@ export default function ReurbModal({
     doc.save(`${imovel.denominacao || 'imovel'}_projeto_reurb.pdf`);
   };
 
+  const baixarLaudoReurbDocx = async () => {
+    const { gerarDocxLaudoReurb } = await import('@/lib/export/reurb');
+    const { saveAs } = await import('file-saver');
+    const blob = await gerarDocxLaudoReurb(imovel, esc, tecnico, {
+      modalidadeReurb,
+      decretoMunicipal,
+      classificacaoSocial,
+      infraBasica,
+      fundamentoReurb
+    });
+    saveAs(blob, `${imovel.denominacao || 'imovel'}_reurb.docx`);
+  };
+
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) fecharComVerificacao(); else onOpenChange(val); }}>
       <DialogContent className="w-[96vw] sm:w-[92vw] max-w-[750px] max-h-[92vh] flex flex-col p-4 sm:p-6 overflow-hidden shadow-2xl" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
@@ -198,8 +211,11 @@ export default function ReurbModal({
             <Button variant="outline" className="text-xs font-bold gap-1.5" onClick={baixarPRF}>
               <Download className="size-4" /> Projeto de REURB (PDF)
             </Button>
-            <Button className="bg-amber-600 hover:bg-amber-700 text-white font-bold gap-1.5" onClick={baixarCRF}>
-              <Download className="size-4" /> Gerar Certidão CRF (PDF)
+            <Button variant="outline" className="text-xs font-bold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={baixarLaudoReurbDocx}>
+              <Download className="size-4 text-blue-600" /> Projeto / Certidão REURB (Word)
+            </Button>
+            <Button className="bg-amber-600 hover:bg-amber-700 text-white font-bold gap-1.5 text-xs" onClick={baixarCRF}>
+              <Download className="size-4" /> Certidão CRF (PDF)
             </Button>
           </div>
         </div>

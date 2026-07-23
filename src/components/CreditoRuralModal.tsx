@@ -190,7 +190,13 @@ export default function CreditoRuralModal({
     doc.save(`${imovel.denominacao || 'imovel'}_cronograma_credito.pdf`);
   };
 
-  // Downloads Word (.docx)
+  const baixarCronogramaDocx = async () => {
+    const { gerarDocxCronogramaFinanceiro } = await import('@/lib/export/creditoRural');
+    const { saveAs } = await import('file-saver');
+    const blob = await gerarDocxCronogramaFinanceiro(imovel, esc, tecnico, obterDadosAtuais());
+    saveAs(blob, `${imovel.denominacao || 'imovel'}_cronograma_credito.docx`);
+  };
+
   const baixarLaudoDocx = async () => {
     const { gerarDocxLaudoAptidao } = await import('@/lib/export/creditoRural');
     const { saveAs } = await import('file-saver');
@@ -553,6 +559,9 @@ export default function CreditoRuralModal({
         <div className="pt-4 border-t flex flex-wrap gap-2 justify-end shrink-0">
           <Button variant="outline" className="text-xs font-bold gap-1.5" onClick={baixarCronogramaPdf} disabled={cronogramaEtapas.length === 0}>
             <Download className="size-4" /> Cronograma (PDF)
+          </Button>
+          <Button variant="outline" className="text-xs font-bold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={baixarCronogramaDocx} disabled={cronogramaEtapas.length === 0}>
+            <Download className="size-4 text-blue-600" /> Cronograma (Word)
           </Button>
           <Button variant="outline" className="text-xs font-bold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={baixarLaudoDocx}>
             <Download className="size-4 text-blue-600" /> Laudo de Aptidão (Word)

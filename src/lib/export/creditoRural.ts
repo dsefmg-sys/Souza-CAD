@@ -473,3 +473,102 @@ export async function gerarDocxProjetoCreditoRural(
 
   return await Packer.toBlob(doc);
 }
+
+/** Gerador Word (.docx) do Cronograma Físico-Financeiro */
+export async function gerarDocxCronogramaFinanceiro(
+  imovel: ImovelData,
+  esc: EscritorioData | null,
+  tecnico: TecnicoData,
+  dados: DadosCredito
+): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType } = await import('docx');
+
+  const etapas = dados.cronogramaEtapas || [];
+  let total = 0;
+
+  const rows = etapas.map((et, index) => {
+    total += Number(et.valor) || 0;
+    return new TableRow({
+      children: [
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: `#${index + 1}` })] }),
+        new TableCell({ width: { size: 55, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: et.etapa || 'Sem descrição' })] }),
+        new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: `Mês ${et.mes}` })] }),
+        new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: `R$ ${(et.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` })] }),
+      ],
+    });
+  });
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: 'CRONOGRAMA FÍSICO-FINANCEIRO DE CRÉDITO RURAL', bold: true, size: 26, color: '059669' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Imóvel: ', bold: true }),
+            new TextRun({ text: imovel.denominacao || 'Não informado' }),
+            new TextRun({ text: ' | Proponente: ', bold: true }),
+            new TextRun({ text: imovel.proprietario || 'Não informado' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: 'Item', bold: true })] })] }),
+                new TableCell({ width: { size: 55, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: 'Etapa / Investimento', bold: true })] })] }),
+                new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: 'Período', bold: true })] })] }),
+                new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: 'Valor Orçado', bold: true })] })] }),
+              ],
+            }),
+            ...rows,
+            new TableRow({
+              children: [
+                new TableCell({ width: { size: 80, type: WidthType.PERCENTAGE }, columnSpan: 3, children: [new Paragraph({ children: [new TextRun({ text: 'VALOR TOTAL DO CRONOGRAMA', bold: true })] })] }),
+                new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: `R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, bold: true, color: '059669' })] })] }),
+              ],
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: 'Declaramos que os recursos orçados no cronograma físico-financeiro acima serão aplicados rigorosamente nas etapas de desenvolvimento técnico e produção constantes deste plano, sob responsabilidade do proponente e fiscalização técnica.'
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: '____________________________________________________' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: tecnico.nome || 'Responsável Técnico', bold: true }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `${dados.conselhoRt || tecnico.conselho || 'CFTA'}: ${tecnico.cft || ''} / ${dados.tituloProfissionalRt || 'Técnico em Agropecuária'}` }),
+          ],
+        }),
+      ],
+    }],
+  });
+
+  return await Packer.toBlob(doc);
+}

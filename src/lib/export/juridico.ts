@@ -161,3 +161,108 @@ export function gerarPdfNotificacaoExtrajudicial(
 
   return doc;
 }
+
+/** Gerador de Parecer Técnico-Jurídico em Word (.docx) */
+export async function gerarDocxParecerJuridico(
+  imovel: ImovelData,
+  esc: EscritorioData | null,
+  tecnico: TecnicoData,
+  dados: DadosJuridico
+): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = await import('docx');
+  const proprietario = (imovel.proprietario || 'Requerente').toUpperCase();
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: 'PARECER TÉCNICO-JURÍDICO DE REGULARIZAÇÃO IMOBILIÁRIA', bold: true, size: 26, color: '1E293B' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'FORO / COMARCA DE COMPETÊNCIA: ', bold: true }),
+            new TextRun({ text: dados.foroComarca?.toUpperCase() || 'NÃO ESPECIFICADO' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'INTERESSADO / REQUERENTE: ', bold: true }),
+            new TextRun({ text: `${proprietario} (CPF: ${imovel.cpfProprietario || '___'})` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'IMÓVEL OBJETO DA ANÁLISE: ', bold: true }),
+            new TextRun({ text: `${imovel.denominacao || 'Área sem denominação'} (${imovel.areaHa ? imovel.areaHa.toFixed(4) : '0.0000'} ha)` }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'I. DOS FATOS E SITUAÇÃO DE POSSE', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: dados.qualificacaoFatos || `O Requerente ${proprietario} possui a posse mansa, pacífica, contínua e ininterrupta do imóvel rural/urbano denominado "${imovel.denominacao || 'Área de Posse'}", situado no município de ${imovel.municipio || 'Não cadastrado'}-${imovel.uf || ''}, respaldado por levantamento geodésico georreferenciado executado pelo profissional ${tecnico.nome || 'Responsável Técnico'}.`
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'II. FUNDAMENTAÇÃO JURÍDICA & ANÁLISE CARTORÁRIA', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: dados.direitoFundamento || `A situação enquadra-se nos ditames do Artigo 1.238 e seguintes do Código Civil Brasileiro e no Artigo 216-A da Lei de Registros Públicos (Lei nº 6.015/1973), apresentando viabilidade para regularização via procedimento extrajudicial diretamente perante o Cartório de Registro de Imóveis competente.`
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'III. CONCLUSÃO E ADVERTÊNCIAS TÉCNICAS', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: 'Aconselha-se o prosseguimento com a notificação extrajudicial ou coleta de anuências diretas dos confrontantes limítrofes cadastrados, instruindo o requerimento com planta, memorial descritivo assinado e ART/TRT devidamente quitada.'
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: '____________________________________________________' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: dados.advogadoNome || 'Nome do Advogado / Consultor Jurídico', bold: true }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `OAB/${dados.advogadoOab || '___-___'} / Consultor Imobiliário` }),
+          ],
+        }),
+      ],
+    }],
+  });
+
+  return await Packer.toBlob(doc);
+}

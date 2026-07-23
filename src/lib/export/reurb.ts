@@ -172,3 +172,117 @@ export function gerarPdfPRF(
 
   return doc;
 }
+
+/** Gerador de Documento Word (.docx) para REURB */
+export async function gerarDocxLaudoReurb(
+  imovel: ImovelData,
+  esc: EscritorioData | null,
+  tecnico: TecnicoData,
+  dados: DadosReurb
+): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = await import('docx');
+  const proprietario = (imovel.proprietario || 'Beneficiário').toUpperCase();
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: 'CERTIDÃO / PROJETO DE REGULARIZAÇÃO FUNDIÁRIA (REURB)', bold: true, size: 26, color: 'D97706' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '1. DADOS DE ENQUADRAMENTO DA REURB', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Modalidade de REURB: ', bold: true }),
+            new TextRun({ text: dados.modalidadeReurb || 'REURB-S (Social)' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Decreto Municipal Autoritativo: ', bold: true }),
+            new TextRun({ text: dados.decretoMunicipal || 'Decreto Municipal Regulamentar' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Classificação da Ocupação: ', bold: true }),
+            new TextRun({ text: dados.classificacaoSocial || 'Ocupação Urbana Consolidade de Baixa Renda' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '2. MEMORIAL E DADOS DO LOTE REGULARIZADO', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Beneficiário Direto: ', bold: true }),
+            new TextRun({ text: `${proprietario} (CPF: ${imovel.cpfProprietario || '___'})` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Denominação do Lote: ', bold: true }),
+            new TextRun({ text: imovel.denominacao || 'Lote Urbano' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Área do Lote: ', bold: true }),
+            new TextRun({ text: `${imovel.areaHa ? imovel.areaHa.toFixed(4) : '0.0000'} ha (${imovel.areaM2 ? imovel.areaM2.toFixed(2) : '0.00'} m²)` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Localização / Município: ', bold: true }),
+            new TextRun({ text: `${imovel.municipio || 'Não cadastrado'}-${imovel.uf || ''}` }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '3. INFRAESTRUTURA BÁSICA E FUNDAMENTAÇÃO LEGAL', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: dados.infraBasica || 'O lote conta com abastecimento de água potável, energia elétrica, vias de acesso públicas e rede de drenagem superficial, atendendo a todos os preceitos da Lei Federal nº 13.465/2017.'
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: '____________________________________________________' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: tecnico.nome || 'Responsável Técnico', bold: true }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `${tecnico.conselho || 'CREA'}: ${tecnico.cft || ''} / Profissional Habilitado em REURB` }),
+          ],
+        }),
+      ],
+    }],
+  });
+
+  return await Packer.toBlob(doc);
+}

@@ -130,6 +130,19 @@ export default function JuridicoModal({
     doc.save(`${imovel.denominacao || 'imovel'}_peticao_usucapiao.pdf`);
   };
 
+  const baixarParecerDocx = async () => {
+    const { gerarDocxParecerJuridico } = await import('@/lib/export/juridico');
+    const { saveAs } = await import('file-saver');
+    const blob = await gerarDocxParecerJuridico(imovel, esc, tecnico, {
+      foroComarca,
+      advogadoNome,
+      advogadoOab,
+      qualificacaoFatos,
+      direitoFundamento
+    });
+    saveAs(blob, `${imovel.denominacao || 'imovel'}_parecer_juridico.docx`);
+  };
+
   const baixarNotificacao = () => {
     const doc = gerarPdfNotificacaoExtrajudicial(imovel, esc, tecnico, {
       foroComarca,
@@ -230,12 +243,15 @@ export default function JuridicoModal({
                 />
               </div>
 
-              <div className="pt-2 border-t flex justify-between items-center">
-                <Button type="button" variant="outline" className="text-xs font-bold" onClick={restaurarTextoPadrao}>
+              <div className="pt-2 border-t flex flex-wrap gap-2 justify-end items-center">
+                <Button type="button" variant="outline" className="text-xs font-bold mr-auto" onClick={restaurarTextoPadrao}>
                   Restaurar Texto Padrão
                 </Button>
-                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5" onClick={baixarPeticao}>
-                  <Download className="size-4" /> Gerar Petição Inicial (PDF)
+                <Button variant="outline" className="text-xs font-bold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={baixarParecerDocx}>
+                  <Download className="size-4 text-blue-600" /> Parecer Jurídico (Word)
+                </Button>
+                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5 text-xs" onClick={baixarPeticao}>
+                  <Download className="size-4" /> Petição Inicial (PDF)
                 </Button>
               </div>
             </div>

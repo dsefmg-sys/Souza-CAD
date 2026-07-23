@@ -159,6 +159,20 @@ export default function MeioAmbienteModal({
     doc.save(`${imovel.denominacao || 'imovel'}_laudo_ambiental_ltca.pdf`);
   };
 
+  const baixarLtcaDocx = async () => {
+    const { gerarDocxLaudoAmbiental } = await import('@/lib/export/meioAmbiente');
+    const { saveAs } = await import('file-saver');
+    const blob = await gerarDocxLaudoAmbiental(imovel, esc, tecnico, {
+      vegetacao,
+      conservacao,
+      corposAgua,
+      appEstimada,
+      fauna,
+      diagnostico
+    });
+    saveAs(blob, `${imovel.denominacao || 'imovel'}_laudo_ambiental_ltca.docx`);
+  };
+
   const baixarFinanciamento = () => {
     const doc = gerarPdfFinanciamento(imovel, esc, tecnico, {
       instituicao,
@@ -272,9 +286,12 @@ export default function MeioAmbienteModal({
                 />
               </div>
 
-              <div className="pt-2 border-t flex justify-end">
-                <Button className="bg-lime-600 hover:bg-lime-700 text-white font-bold gap-1.5" onClick={baixarLTCA}>
-                  <Download className="size-4" /> Gerar Laudo LTCA (PDF)
+              <div className="pt-2 border-t flex flex-wrap gap-2 justify-end">
+                <Button variant="outline" className="text-xs font-bold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={baixarLtcaDocx}>
+                  <Download className="size-4 text-blue-600" /> Laudo LTCA (Word)
+                </Button>
+                <Button className="bg-lime-600 hover:bg-lime-700 text-white font-bold gap-1.5 text-xs" onClick={baixarLTCA}>
+                  <Download className="size-4" /> Laudo LTCA (PDF)
                 </Button>
               </div>
             </div>

@@ -186,3 +186,116 @@ export function gerarPdfLaudoInfraestrutura(
 
   return doc;
 }
+
+/** Gerador de Documento Word (.docx) do Memorial de Loteamento */
+export async function gerarDocxQuadroLoteamento(
+  imovel: ImovelData,
+  esc: EscritorioData | null,
+  tecnico: TecnicoData,
+  dados: DadosLoteamento
+): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = await import('docx');
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: 'MEMORIAL DESCRITIVO E QUADRO DE LOTEAMENTO', bold: true, size: 26, color: '0D9488' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '1. DADOS DO IMÓVEL ORIGINÁRIO (GLEBA MÃE)', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Denominação: ', bold: true }),
+            new TextRun({ text: imovel.denominacao || 'Sem denominação' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Município / UF: ', bold: true }),
+            new TextRun({ text: `${imovel.municipio || 'Não cadastrado'}-${imovel.uf || ''}` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Área Total Georreferenciada: ', bold: true }),
+            new TextRun({ text: `${imovel.areaHa ? imovel.areaHa.toFixed(4) : '0.0000'} ha (${imovel.areaM2 ? imovel.areaM2.toFixed(2) : '0.00'} m²)` }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '2. QUADRO DE DISTRIBUIÇÃO DE ÁREAS E QUANTITATIVOS', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Número de Lotes Projetados: ', bold: true }),
+            new TextRun({ text: `${dados.numeroLotes || '0'} unidades` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Área Destinada a Vias Públicas (Ruas): ', bold: true }),
+            new TextRun({ text: `${dados.areaRuas || '0,00'} m²` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Área Destinada a Áreas Verdes / Recreação: ', bold: true }),
+            new TextRun({ text: `${dados.areaVerde || '0,00'} m²` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Volume de Corte / Terraplenagem: ', bold: true }),
+            new TextRun({ text: `${dados.volCorte || '0,00'} m³ (Aterro: ${dados.volAterro || '0,00'} m³)` }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '3. DIRETRIZES URBANÍSTICAS E AMBIENTAIS', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: 'O projeto atende plenamente à Lei Federal nº 6.766/1979 e ao Plano Diretor Municipal, prevendo áreas destinadas a equipamentos públicos, vias de circulação e sistema de drenagem pluvial.'
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: '____________________________________________________' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: tecnico?.nome || 'Responsável Técnico', bold: true }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `${tecnico?.conselho || 'CREA'}: ${tecnico?.cft || ''} / Autor do Projeto Urbanístico` }),
+          ],
+        }),
+      ],
+    }],
+  });
+
+  return await Packer.toBlob(doc);
+}

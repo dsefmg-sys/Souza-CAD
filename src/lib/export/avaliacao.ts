@@ -124,3 +124,129 @@ export function gerarPdfLaudoAvaliacao(
 
   return doc;
 }
+
+/** Gerador de Laudo de Avaliação de Imóvel em Word (.docx) */
+export async function gerarDocxAvaliacaoImovel(
+  imovel: ImovelData,
+  esc: EscritorioData | null,
+  tecnico: TecnicoData,
+  dados: DadosAvaliacao
+): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = await import('docx');
+  const descTipo = dados.tipoImovel === 'rural' ? 'IMÓVEL RURAL' : 'IMÓVEL URBANO';
+
+  const areaCalc = dados.tipoImovel === 'rural' ? (imovel.areaHa || 0) : (imovel.areaM2 || 0);
+  const unidade = dados.tipoImovel === 'rural' ? 'ha' : 'm²';
+  const valUnitNum = parseFloat((dados.valorUnitario || '0').replace(/\./g, '').replace(/,/g, '.')) || 0;
+  const valTotal = areaCalc * valUnitNum;
+  const valUnitStr = valUnitNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const valTotalStr = valTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `LAUDO TÉCNICO DE AVALIAÇÃO DE ${descTipo}`, bold: true, size: 26, color: '059669' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '1. IDENTIFICAÇÃO E ASPECTOS GERAIS', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Denominação: ', bold: true }),
+            new TextRun({ text: imovel.denominacao || 'Não informado' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Área Avaliada: ', bold: true }),
+            new TextRun({ text: `${imovel.areaHa ? imovel.areaHa.toFixed(4) : '0.0000'} ha (${imovel.areaM2 ? imovel.areaM2.toFixed(2) : '0.00'} m²)` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Município/UF: ', bold: true }),
+            new TextRun({ text: `${imovel.municipio || 'Não cadastrado'}-${imovel.uf || ''}` }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '2. DIAGNÓSTICO DO TERRENO E BENFEITORIAS', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Aptidão / Qualidade do Solo: ', bold: true }),
+            new TextRun({ text: dados.aptidaoSolo || 'Alta aptidão agrícola com relevo plano' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Estado de Conservação das Edificações: ', bold: true }),
+            new TextRun({ text: dados.conservacaoEdif || 'Regular' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Benfeitorias e Infraestrutura: ', bold: true }),
+            new TextRun({ text: dados.benfeitorias || 'Cercamento completo, infraestrutura rural/urbana.' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '3. VALORES E METODOLOGIA APLICADA', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Metodologia Utilizada: ', bold: true }),
+            new TextRun({ text: dados.metodologia || 'Método Comparativo Direto de Dados de Mercado (NBR 14653)' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Valor Unitário de Referência: ', bold: true }),
+            new TextRun({ text: `${valUnitStr} por ${unidade}` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'VALOR TOTAL ESTIMADO DO IMÓVEL: ', bold: true, color: '059669' }),
+            new TextRun({ text: valTotalStr, bold: true, size: 24, color: '059669' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: '____________________________________________________' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: tecnico.nome || 'Nome do Profissional', bold: true }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `${tecnico.conselho || 'CREA'}: ${tecnico.cft || ''} / Engenheiro Agrônomo / Perito Avaliador` }),
+          ],
+        }),
+      ],
+    }],
+  });
+
+  return await Packer.toBlob(doc);
+}

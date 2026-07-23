@@ -285,6 +285,23 @@ export default function LoteamentoModal({
     doc.save(`${imovel.denominacao || 'imovel'}_laudo_infraestrutura.pdf`);
   };
 
+  const baixarQuadroLoteamentoDocx = async () => {
+    const { gerarDocxQuadroLoteamento } = await import('@/lib/export/loteamento');
+    const { saveAs } = await import('file-saver');
+    const blob = await gerarDocxQuadroLoteamento(imovel, esc, tecnico, {
+      numeroLotes,
+      areaVerde,
+      areaRuas,
+      volCorte,
+      volAterro,
+      infraAgua,
+      infraEsgoto,
+      infraLuz,
+      infraDrenagem
+    });
+    saveAs(blob, `${imovel.denominacao || 'imovel'}_memorial_loteamento.docx`);
+  };
+
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) fecharComVerificacao(); else onOpenChange(val); }}>
       <DialogContent className="w-[96vw] sm:w-[92vw] max-w-[750px] max-h-[92vh] flex flex-col p-4 sm:p-6 overflow-hidden shadow-2xl" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
@@ -435,10 +452,13 @@ export default function LoteamentoModal({
             <Button variant="outline" className="text-xs font-bold gap-1.5 mr-auto" onClick={baixarMemoriaisLotesZip}>
               <Download className="size-4" /> Memoriais por Lote (ZIP)
             </Button>
-            <Button variant="outline" className="text-xs font-bold gap-1.5" onClick={baixarLaudoInfra}>
-              <Download className="size-4" /> Laudo de Infraestrutura &amp; Terraplenagem (PDF)
+            <Button variant="outline" className="text-xs font-bold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={baixarQuadroLoteamentoDocx}>
+              <Download className="size-4 text-blue-600" /> Memorial de Loteamento (Word)
             </Button>
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white font-bold gap-1.5" onClick={baixarMemorial}>
+            <Button variant="outline" className="text-xs font-bold gap-1.5" onClick={baixarLaudoInfra}>
+              <Download className="size-4" /> Infraestrutura &amp; Terraplenagem (PDF)
+            </Button>
+            <Button className="bg-teal-600 hover:bg-teal-700 text-white font-bold gap-1.5 text-xs" onClick={baixarMemorial}>
               <Download className="size-4" /> Memorial de Loteamento (PDF)
             </Button>
           </div>

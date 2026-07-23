@@ -334,3 +334,130 @@ export function gerarPdfPRADA(
 
   return doc;
 }
+
+/** Gerador de Documento Word (.docx) para Caracterização Ambiental (LTCA / PRADA) */
+export async function gerarDocxLaudoAmbiental(
+  imovel: ImovelData,
+  esc: EscritorioData | null,
+  tecnico: TecnicoData,
+  dados: DadosLTCA
+): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = await import('docx');
+  const proprietario = (imovel.proprietario || 'Proprietário/Possuidor').toUpperCase();
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: 'LAUDO TÉCNICO DE CARACTERIZAÇÃO AMBIENTAL (LTCA)', bold: true, size: 26, color: '15803D' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '1. DADOS DE IDENTIFICAÇÃO DO IMÓVEL RURAL', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Denominação: ', bold: true }),
+            new TextRun({ text: imovel.denominacao || 'Não informado' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Proprietário / Detentor: ', bold: true }),
+            new TextRun({ text: `${proprietario} (CPF: ${imovel.cpfProprietario || '___'})` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Município / UF: ', bold: true }),
+            new TextRun({ text: `${imovel.municipio || 'Não cadastrado'}-${imovel.uf || ''}` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Área Total: ', bold: true }),
+            new TextRun({ text: `${imovel.areaHa ? imovel.areaHa.toFixed(4) : '0.0000'} ha` }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '2. CARACTERIZAÇÃO DA COBERTURA VEGETAL E FLORA', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Vegetação Predominante: ', bold: true }),
+            new TextRun({ text: dados.vegetacao || 'Mata Nativa / Vegetação Nativa Regional' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Estado de Conservação: ', bold: true }),
+            new TextRun({ text: dados.conservacao || 'Preservado' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Corpos d\'água Identificados: ', bold: true }),
+            new TextRun({ text: dados.corposAgua || 'Nascentes e cursos d\'água com APP' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Área de APP Estimada: ', bold: true }),
+            new TextRun({ text: `${dados.appEstimada || '0.00'} ha` }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '3. FAUNA SILVESTRE E DIAGNÓSTICO AMBIENTAL', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Fauna Observada: ', bold: true }),
+            new TextRun({ text: dados.fauna || 'Avifauna e pequenos mamíferos da região.' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Parecer Técnico: ', bold: true }),
+            new TextRun({
+              text: dados.diagnostico || 'O imóvel rural atende às diretrizes do Código Florestal Brasileiro (Lei nº 12.651/2012), recomendando-se a manutenção da vegetação nativa das Áreas de Preservação Permanente e averbação no CAR.'
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: '____________________________________________________' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: tecnico.nome || 'Responsável Técnico', bold: true }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `${tecnico.conselho || 'CREA'}: ${tecnico.cft || ''} / Engenheiro Ambiental / Agrônomo` }),
+          ],
+        }),
+      ],
+    }],
+  });
+
+  return await Packer.toBlob(doc);
+}
