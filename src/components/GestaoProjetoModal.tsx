@@ -38,7 +38,24 @@ interface Props {
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 
-export default function GestaoProjetoModal({ open, onOpenChange, imovel, financeiro, onChange, nomeProjeto, areaHa, perimetro, tecnico, escritorio, dataExtenso, isAdmin = false, onAbrirAjustes, onAbrirConferir, onAbrirProjeto }: Props) {
+export default function GestaoProjetoModal({
+  open,
+  onOpenChange,
+  imovel,
+  financeiro,
+  onChange,
+  nomeProjeto,
+  areaHa,
+  perimetro,
+  tecnico,
+  escritorio,
+  dataExtenso,
+  isAdmin = false,
+  onAbrirAjustes,
+  onAbrirConferir,
+  onAbrirProjeto,
+  onMinimizar,
+}: Props & { onMinimizar?: () => void }) {
   const lancamentos = financeiro.lancamentos ?? [];
   const valorCobrado = financeiro.valorCobrado ?? 0;
 
@@ -211,7 +228,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[92vw] max-w-[1080px] max-h-[85vh] flex flex-col p-4 overflow-hidden rounded-xl border shadow-2xl">
+      <DialogContent onMinimize={onMinimizar} className="w-[92vw] max-w-[1080px] max-h-[85vh] flex flex-col p-4 overflow-hidden rounded-xl border shadow-2xl">
         <DialogHeader className="border-b pb-2 shrink-0 flex flex-row items-center justify-between">
           <DialogTitle className="flex items-center gap-2 text-base font-extrabold uppercase tracking-wide">
             <Wallet className="size-5 text-emerald-500" />

@@ -233,7 +233,7 @@ export default function EditorPdfModal({ aberto, onFechar, onExtrairComIA }: Pro
 
   return (
     <Dialog open={aberto} onOpenChange={(open) => { if (!open) onFechar(); }}>
-      <DialogContent className="max-w-6xl w-[95vw] h-[85vh] max-h-[750px] bg-zinc-950 text-zinc-100 border border-zinc-800 shadow-2xl p-0 overflow-hidden font-sans flex flex-col">
+      <DialogContent onMinimize={onMinimizar} className="max-w-6xl w-[95vw] h-[85vh] max-h-[750px] bg-zinc-950 text-zinc-100 border border-zinc-800 shadow-2xl p-0 overflow-hidden font-sans flex flex-col">
         {/* Cabeçalho Fixo */}
         <DialogHeader className="px-6 py-4 border-b border-zinc-800/80 bg-zinc-900/80 backdrop-blur-xl flex flex-row items-center justify-between shrink-0">
           <div className="flex items-center gap-3">

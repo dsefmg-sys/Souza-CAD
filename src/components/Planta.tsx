@@ -572,7 +572,8 @@ export default function Planta({
   const verSituacao = config.mostrarSituacao !== false && !config.situacaoEscondida;
   const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1.5;
   const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
-  const fonteRot = fs(config.fonteRotulos ?? 10);
+  const fonteRot = fs(config.fonteRotulosVertices ?? config.fonteRotulos ?? 10); // Rótulos dos Vértices
+  const fonteTextosGerais = fs(config.fonteTextosGerais ?? config.fonteRotulos ?? 10); // Demais Textos da Planta (confrontantes, carimbos, etc.)
   const escVert = config.escalaVertices && config.escalaVertices > 0 ? config.escalaVertices : 1; // tamanho dos símbolos de vértice
   const escTab = config.escalaTabelas && config.escalaTabelas > 0 ? config.escalaTabelas : 1; // fonte só das tabelas (roteiro, coordenadas, áreas)
   const escConf = config.escalaConfront && config.escalaConfront > 0 ? config.escalaConfront : 1; // tamanho das caixas de confrontantes
@@ -1290,7 +1291,7 @@ export default function Planta({
     const ovQ = getOverride(idQ);
     const bx = DRAW.x0 + 24 + (ovQ.dx ?? 0);
     const by = DRAW.y0 + 24 + (ovQ.dy ?? 0);
-    const fz = Math.max(7, fonteRot * escTab);
+    const fz = Math.max(7, fonteTextosGerais * escTab);
     const lh = fz + 5;
     const ch = 0.62 * fz;
     const WN = 16 * ch;
@@ -1306,7 +1307,7 @@ export default function Planta({
   if (config.mostrarTabelasPlanta !== false && config.mostrarRoteiro && res.lados.length > 0) {
     const idR = 'planta.roteiro';
     const ovR = getOverride(idR);
-    const fz = Math.max(6.5, (fonteRot - 1) * escTab);
+    const fz = Math.max(6.5, (fonteTextosGerais - 1) * escTab);
     const lh = fz + 4;
     const ch = 0.62 * fz;
     const W_VTX = 7.5 * ch;
@@ -1325,7 +1326,7 @@ export default function Planta({
   if (config.mostrarTabelasPlanta !== false && config.mostrarCoordenadas && vertices.length > 0) {
     const idC = 'planta.coordenadas';
     const ovC = getOverride(idC);
-    const fz = Math.max(6.5, (fonteRot - 1) * escTab);
+    const fz = Math.max(6.5, (fonteTextosGerais - 1) * escTab);
     const lh = fz + 4;
     const ch = 0.62 * fz;
     const WV = 13 * ch;
@@ -1368,7 +1369,7 @@ export default function Planta({
   const signatureBoxes = rotulosConf.map((r) => {
     if (!r.c || !r.c.nome) return null;
     const c = r.c;
-    const fz = c.tamRotulo && c.tamRotulo > 0 ? +(c.tamRotulo * escTxt).toFixed(2) : fonteRot;
+    const fz = c.tamRotulo && c.tamRotulo > 0 ? +(c.tamRotulo * escTxt).toFixed(2) : fonteTextosGerais;
     const todas = rotuloConfrontanteLinhas(c);
     const temConjLinhas = !!c.conjugeNome && todas.length >= 2 && /^C[ôo]njuge:/i.test(todas[todas.length - 2]);
     const conjLines = temConjLinhas ? todas.slice(-2) : [];
@@ -1846,7 +1847,7 @@ export default function Planta({
         const ovQ = getOverride(idQ);
         const bx = DRAW.x0 + 24 + (ovQ.dx ?? 0);
         const by = DRAW.y0 + 24 + (ovQ.dy ?? 0);
-        const fz = Math.max(7, fonteRot * escTab);
+        const fz = Math.max(7, fonteTextosGerais * escTab);
         const lh = fz + 5;
         // Larguras em função da fonte REAL (fz escala com a escala de textos) — pixel fixo sobrepõe
         const ch = 0.62 * fz;
@@ -1892,7 +1893,7 @@ export default function Planta({
         const ovR = getOverride(idR);
         const comConf = config.roteiroComConfrontante !== false;
         const nomeConf = (cid: string | null) => (cid ? (confrontantes.find((c) => c.id === cid)?.nome || '—') : '—');
-        const fz = Math.max(6.5, (fonteRot - 1) * escTab);
+        const fz = Math.max(6.5, (fonteTextosGerais - 1) * escTab);
         const lh = fz + 4;
         // Larguras das colunas em função da fonte REAL (fz já vem multiplicado pela escala de
         // textos, então pixel fixo não serve — ch ≈ largura média de um caractere nesta fonte).
@@ -1994,7 +1995,7 @@ export default function Planta({
       {config.mostrarCoordenadas && vertices.length > 0 && (() => {
         const idC = 'planta.coordenadas';
         const ovC = getOverride(idC);
-        const fz = Math.max(6.5, (fonteRot - 1) * escTab);
+        const fz = Math.max(6.5, (fonteTextosGerais - 1) * escTab);
         const lh = fz + 4;
 
         // Larguras das colunas em função da fonte REAL (fz escala com a escala de textos do
@@ -2241,7 +2242,7 @@ export default function Planta({
         ) || /^gleba\s*\d+/i.test(c.nome);
 
         if (ehConfrontanteInternoGlebas) return null;
-        const fz = (c.tamRotulo && c.tamRotulo > 0 ? +(c.tamRotulo * escTxt).toFixed(2) : fonteRot) * escConf;
+        const fz = (c.tamRotulo && c.tamRotulo > 0 ? +(c.tamRotulo * escTxt).toFixed(2) : fonteTextosGerais) * escConf;
         const todas = rotuloConfrontanteLinhas(c);
         // cônjuge só conta se a função realmente anexou as 2 linhas dele (não acontece em espólio)
         const temConjLinhas = !!c.conjugeNome && todas.length >= 2 && /^C[ôo]njuge:/i.test(todas[todas.length - 2]);

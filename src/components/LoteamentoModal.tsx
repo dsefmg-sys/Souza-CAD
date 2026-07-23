@@ -41,8 +41,9 @@ export default function LoteamentoModal({
   glebas = [],
   onChangeGlebas,
   defaultVolCorte,
-  defaultVolAterro
-}: Props) {
+  defaultVolAterro,
+  onMinimizar
+}: Props & { onMinimizar?: () => void }) {
   const [msg, setMsg] = useState('');
   const [activeTab, setActiveTab] = useState<'projeto' | 'vendas'>('projeto');
   const [loteSelecionadoId, setLoteSelecionadoId] = useState<string>('');

@@ -34,18 +34,19 @@ export default function PlanilhaConferenciaModal({
   confrontantePorLado,
   tecnico,
   onBaixar,
-  imoveisCadastrados
+  imoveisCadastrados,
+  onMinimizar
 }: Props) {
   const handleOpenChange = async (val: boolean) => {
     if (!val) {
       if (isManualEdit) {
-        const ok = await confirmar({
-          titulo: 'Descartar Alterações',
-          mensagem: 'Você realizou edições manuais na planilha. Deseja realmente fechar e perder essas alterações?',
-          okLabel: 'Descartar e fechar',
+        const desc = await confirmar({
+          titulo: 'Descartar alterações?',
+          mensagem: 'Você editou dados na tabela de conferência. Se fechar agora, essas alterações serão perdidas.',
+          okLabel: 'Descartar e Fechar',
           perigo: true,
         });
-        if (!ok) return;
+        if (!desc) return;
       }
       onOpenChange(false);
     } else {
@@ -101,8 +102,8 @@ export default function PlanilhaConferenciaModal({
   ];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col bg-background/95 backdrop-blur-2xl shadow-2xl p-6 rounded-2xl border border-emerald-500/20 overflow-hidden">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent onMinimize={onMinimizar} className="flex max-h-[92vh] max-w-6xl flex-col bg-background/95 backdrop-blur-2xl shadow-2xl p-6 rounded-2xl border border-emerald-500/20 overflow-hidden">
         <DialogHeader className="border-b border-border/50 pb-3">
           <DialogTitle className="flex items-center gap-2.5 text-base font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
             <FileSpreadsheet className="size-5.5 text-emerald-500" /> Conferência da Planilha SIGEF / INCRA

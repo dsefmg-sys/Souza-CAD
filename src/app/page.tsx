@@ -74,6 +74,7 @@ import Map3DViewer from '@/components/Map3DViewer';
 import { ObjetoPersonalizarModal } from '@/components/ObjetoPersonalizarModal';
 import { SigefMenuModal } from '@/components/SigefMenuModal';
 import { PecasSheetModal } from '@/components/PecasSheetModal';
+import JanelasMinimizadasDock, { type JanelaMinimizada } from '@/components/JanelasMinimizadasDock';
 
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
@@ -1363,7 +1364,40 @@ export default function EditorPage() {
   const [espessuraCert, setEspessuraCert] = useState(1.4);
   const [assinaturaAberta, setAssinaturaAberta] = useState(false);
   const [projetosModalAberto, setProjetosModalAberto] = useState(false);
-  // A CHAVE do app: 'simples' (tela enxuta, ideal pra aprender) x 'completo' (tudo à mostra).
+  const [janelasMinimizadas, setJanelasMinimizadas] = useState<JanelaMinimizada[]>([]);
+
+  const minimizarJanela = (id: string, titulo: string, icone?: React.ReactNode, fecharAction?: () => void) => {
+    setJanelasMinimizadas((prev) => {
+      if (prev.some((j) => j.id === id)) return prev;
+      return [...prev, { id, titulo, icone }];
+    });
+    if (fecharAction) fecharAction();
+    aviso('Janela minimizada! Clique no lembrete no rodapé para restaurá-la a qualquer momento.');
+  };
+
+  const restaurarJanelaMinimizada = (id: string) => {
+    setJanelasMinimizadas((prev) => prev.filter((j) => j.id !== id));
+    if (id === 'car') setCarAberto(true);
+    else if (id === 'req') setReqAberto(true);
+    else if (id === 'loteamento') setLoteamentoAberto(true);
+    else if (id === 'estudio') setEstudioAberto(true);
+    else if (id === 'dxf') setDxfEditorAberto(true);
+    else if (id === 'pdf') setEditorPdfAberto(true);
+    else if (id === 'gestao') setGestaoAberta(true);
+    else if (id === 'conferir') setConferirAberto(true);
+    else if (id === 'projetos') setProjetosModalAberto(true);
+    else if (id === 'calc') setCalcAberta(true);
+    else if (id === 'pontosBanco') setPontosAberto(true);
+    else if (id === 'credito') setCreditoAberto(true);
+    else if (id === 'juridico') setJuridicoAberto(true);
+    else if (id === 'trt') setTrtAberto(true);
+    else if (id === 'errata') setErrataAberto(true);
+    else if (id === 'anuencia') setAnuenciaAberta(true);
+  };
+
+  const fecharJanelaMinimizada = (id: string) => {
+    setJanelasMinimizadas((prev) => prev.filter((j) => j.id !== id));
+  };
   // Novo usuário começa no simples. Fica salvo nas preferências e vale no app inteiro.
   const [modoApp, setModoApp] = useState<'simples' | 'medio' | 'completo'>('simples');
   const [, setTempoCompletoMs] = useState(0);
@@ -10695,6 +10729,7 @@ export default function EditorPage() {
         onBaixar={() => setBaixou((b) => ({ ...b, req: true }))}
         glebas={sincronizarGlebas()}
         glebaAtivaId={glebaAtivaId}
+        onMinimizar={() => minimizarJanela('req', 'Requerimento Cartorário', <FileText className="size-3.5 text-emerald-500" />, () => setReqAberto(false))}
       />
       <ModalSeletorGlebasPecas
         open={seletorGlebasPecasAberto}
@@ -10806,6 +10841,7 @@ export default function EditorPage() {
         onChangeGlebas={setGlebas}
         defaultVolCorte={plantaConfig?.print3dVolumeCorte}
         defaultVolAterro={plantaConfig?.print3dVolumeAterro}
+        onMinimizar={() => minimizarJanela('loteamento', 'Desmembramento / Loteamento', <LayoutGrid className="size-3.5 text-amber-500" />, () => setLoteamentoAberto(false))}
       />
       <CreditoRuralModal
         open={creditoAberto}
@@ -10830,10 +10866,10 @@ export default function EditorPage() {
         onSalvarProjeto={salvar}
       />
       <ErrorBoundary onReset={() => setCalcAberta(false)}>
-        <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />
+        <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} onMinimizar={() => minimizarJanela('calc', 'Calculadora Topográfica', <Calculator className="size-3.5 text-indigo-500" />, () => setCalcAberta(false))} />
       </ErrorBoundary>
       <ErrorBoundary onReset={() => setEditorPdfAberto(false)}>
-        <EditorPdfModal aberto={editorPdfAberto} onFechar={() => setEditorPdfAberto(false)} onExtrairComIA={() => { setIaArquivoInicial(null); setIaAberta(true); }} />
+        <EditorPdfModal aberto={editorPdfAberto} onFechar={() => setEditorPdfAberto(false)} onExtrairComIA={() => { setIaArquivoInicial(null); setIaAberta(true); }} onMinimizar={() => minimizarJanela('pdf', 'Editor de PDF', <FileText className="size-3.5 text-rose-500" />, () => setEditorPdfAberto(false))} />
       </ErrorBoundary>
       <VerticeVirtualModal
         open={vvAberto}
@@ -10845,9 +10881,9 @@ export default function EditorPage() {
         basePadrao={vvBase}
         onCriar={criarVerticeVirtual}
       />
-      <ErrorBoundary onReset={() => setDxfEditorAberto(false)}><DxfEditorModal open={dxfEditorAberto} onOpenChange={setDxfEditorAberto} /></ErrorBoundary>
+      <ErrorBoundary onReset={() => setDxfEditorAberto(false)}><DxfEditorModal open={dxfEditorAberto} onOpenChange={setDxfEditorAberto} onMinimizar={() => minimizarJanela('dxf', 'Editor DXF', <FolderOpen className="size-3.5 text-cyan-500" />, () => setDxfEditorAberto(false))} /></ErrorBoundary>
       <PorcentagemModal open={porcentagemAberta} onOpenChange={setPorcentagemAberta} glebas={glebas.map((g) => ({ id: g.id, nome: g.denominacao, vertices: g.id === glebaAtivaId ? vertices : g.vertices }))} />
-      <ErrorBoundary onReset={() => setEstudioAberto(false)}><EstudioModal open={estudioAberto} onOpenChange={setEstudioAberto} /></ErrorBoundary>
+      <ErrorBoundary onReset={() => setEstudioAberto(false)}><EstudioModal open={estudioAberto} onOpenChange={setEstudioAberto} onMinimizar={() => minimizarJanela('estudio', 'Estúdio CAD', <Palette className="size-3.5 text-blue-500" />, () => setEstudioAberto(false))} /></ErrorBoundary>
       <ExtrairIaModal open={iaAberta} onOpenChange={(o) => { setIaAberta(o); if (!o) { setIaArquivoInicial(null); setIaConfrontanteId(null); } }} arquivoInicial={iaArquivoInicial}
         confrontantes={confrontantes.map((c) => ({ id: c.id, nome: c.nome }))}
         destinoInicial={iaConfrontanteId ?? 'imovel'}
@@ -10934,7 +10970,7 @@ export default function EditorPage() {
       <ErrorBoundary onReset={() => setCarAberto(false)}>
         <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
           areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()}
-          onExportarShapefiles={exportarCarShapefiles} onImportarShapefile={() => shapefileRef.current?.click()} processando={processando} />
+          onExportarShapefiles={exportarCarShapefiles} onImportarShapefile={() => shapefileRef.current?.click()} processando={processando} onMinimizar={() => minimizarJanela('car', 'CAR — Cadastro Ambiental', <Leaf className="size-3.5 text-emerald-500" />, () => setCarAberto(false))} />
       </ErrorBoundary>
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} correcoes={correcoes} onChangeCorrecoes={setCorrecoes} onBaixar={() => setBaixou((b) => ({ ...b, errata: true }))} />
       <AnuenciaModal open={anuenciaAberta} onOpenChange={setAnuenciaAberta} confrontantes={confrontantes} lados={lados} mapa={confrontantePorLado} imovel={imovel} tecnico={tecnico} />
@@ -11469,6 +11505,7 @@ export default function EditorPage() {
       {/* Modal de Abertura de Projetos (Tabela Fullscreen com Importar ODS, Certificação SIGEF e Lixeira) */}
       <Dialog open={projetosModalAberto} onOpenChange={(open) => { setProjetosModalAberto(open); if (open) atualizarLista(); }}>
         <DialogContent
+          onMinimize={() => minimizarJanela('projetos', 'Lista de Projetos', <FolderOpen className="size-3.5 text-indigo-500" />, () => setProjetosModalAberto(false))}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
           className="fixed !left-0 !top-0 !w-screen !h-screen !max-w-none !max-h-none !translate-x-0 !translate-y-0 !border-none !rounded-none flex flex-col bg-card p-4 sm:p-6 shadow-2xl overflow-hidden !z-[6000]"
@@ -13651,6 +13688,12 @@ export default function EditorPage() {
           </Dialog>
         </>
       )}
+
+      <JanelasMinimizadasDock
+        janelas={janelasMinimizadas}
+        onRestaurar={restaurarJanelaMinimizada}
+        onFechar={fecharJanelaMinimizada}
+      />
     </div>
   );
 }
@@ -14915,9 +14958,14 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
 
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
-            <Label className="text-[10.5px] font-bold">Fonte dos rótulos</Label>
-            <Input type="number" step="0.5" placeholder="8.5" value={config.fonteRotulos ? String(config.fonteRotulos) : ''}
-              onChange={(e) => set({ fonteRotulos: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs font-semibold" />
+            <Label className="text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400">Rótulos dos Vértices</Label>
+            <Input type="number" step="0.5" placeholder="8.5" value={config.fonteRotulosVertices ? String(config.fonteRotulosVertices) : (config.fonteRotulos ? String(config.fonteRotulos) : '')}
+              onChange={(e) => set({ fonteRotulosVertices: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs font-bold border-emerald-500/30" title="Tamanho da fonte dos rótulos dos vértices (V1, M-001, P-002)" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10.5px] font-bold text-indigo-600 dark:text-indigo-400">Demais Textos da Planta</Label>
+            <Input type="number" step="0.5" placeholder="8.5" value={config.fonteTextosGerais ? String(config.fonteTextosGerais) : (config.fonteRotulos ? String(config.fonteRotulos) : '')}
+              onChange={(e) => set({ fonteTextosGerais: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs font-bold border-indigo-500/30" title="Tamanho da fonte dos demais textos (confrontantes, carimbos, observações)" />
           </div>
           <div className="space-y-1">
             <Label className="text-[10.5px] font-bold">Escala dos textos</Label>
@@ -14939,7 +14987,7 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
             <Input type="number" step="0.05" placeholder="1.0" value={config.escalaDeclaracoes ? String(config.escalaDeclaracoes) : ''}
               onChange={(e) => set({ escalaDeclaracoes: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs font-semibold" />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 col-span-2">
             <Label className="text-[10.5px] font-bold">Escala confrontantes</Label>
             <Input type="number" step="0.05" placeholder="1.0" value={config.escalaConfront ? String(config.escalaConfront) : ''}
               onChange={(e) => set({ escalaConfront: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs font-semibold" />

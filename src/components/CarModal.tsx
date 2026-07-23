@@ -21,7 +21,7 @@ const num = (n: number, d = 2) => n.toLocaleString('pt-BR', { minimumFractionDig
 
 interface AreasCamadas { app: number; reservaLegal: number; vegetacao: number; usoConsolidado: number }
 
-export default function CarModal({ open, onOpenChange, areaHa, areasCamadas, onExportarShapefiles, onImportarShapefile, processando }: { open: boolean; onOpenChange: (o: boolean) => void; areaHa: number; areasCamadas?: AreasCamadas; onExportarShapefiles?: () => void; onImportarShapefile?: () => void; processando?: boolean }) {
+export default function CarModal({ open, onOpenChange, areaHa, areasCamadas, onExportarShapefiles, onImportarShapefile, processando, onMinimizar }: { open: boolean; onOpenChange: (o: boolean) => void; areaHa: number; areasCamadas?: AreasCamadas; onExportarShapefiles?: () => void; onImportarShapefile?: () => void; processando?: boolean; onMinimizar?: () => void }) {
   const [bioma, setBioma] = useState<Bioma>('demais');
   const [moduloFiscal, setModuloFiscal] = useState('');
   const [reservaHa, setReservaHa] = useState('');
@@ -60,7 +60,7 @@ export default function CarModal({ open, onOpenChange, areaHa, areasCamadas, onE
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[96vw] xl:max-w-7xl max-h-[92vh] flex flex-col p-5 bg-background shadow-2xl rounded-xl">
+      <DialogContent onMinimize={onMinimizar} className="max-w-[96vw] xl:max-w-7xl max-h-[92vh] flex flex-col p-5 bg-background shadow-2xl rounded-xl">
         <DialogHeader className="shrink-0 pb-2 border-b border-border/60">
           <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
             <Leaf className="size-5.5 text-emerald-500" /> CAR — Cadastro Ambiental Rural

@@ -499,7 +499,9 @@ export interface PlantaConfig {
   estiloVertice?: 'sigef' | 'convencional' | 'v'; // rótulo do vértice: código SIGEF (padrão), P1, P2, P3… ou V1, V2, V3…
   modoRotulosPlanta?: 'chamada' | 'proximo'; // Modo A (chamada com linha tracejada) ou Modo B (direto com fundo sólido sobre vértices)
   mostrarSituacao?: boolean;   // padrão true (quando há imagem de situação)
-  fonteRotulos?: number;       // tamanho da fonte dos rótulos (vértices/confrontantes), padrão 8.5
+  fonteRotulos?: number;       // tamanho legado / fallback dos rótulos e textos, padrão 8.5
+  fonteRotulosVertices?: number; // tamanho específico dos rótulos dos vértices (V1, M-001, etc.), padrão 8.5
+  fonteTextosGerais?: number;    // tamanho específico dos demais textos da planta (confrontantes, carimbos, observações), padrão 8.5
   escalaTextos?: number;       // multiplicador de TODOS os textos da planta (1 = padrão)
   escalaDeclaracoes?: number;  // multiplicador só das declarações (proprietário + laudo), 1 = padrão
   escalaConfront?: number;     // multiplicador só do texto/assinatura dos confrontantes, 1 = padrão
