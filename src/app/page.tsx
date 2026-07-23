@@ -1503,6 +1503,17 @@ export default function EditorPage() {
   // Aliases curtos pros callsites existentes
   const ultimoSalvoSig = { current: '' }; // mantido só pra não quebrar os 6 callsites; valor é gerenciado pelo hook
   const acabouDeSalvar = { current: false };
+  const alteracoesLog = useRef<string[]>([]);
+  const estadoBaseRef = useRef<{
+    v: Vertex[];
+    conf: Confrontante[];
+    cpl: Record<number, string>;
+    obj: ObjetoDesenho[];
+    ig: Vertex[];
+    denom?: string;
+    prop?: string;
+    mat?: string;
+  } | null>(null);
 
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [lixeira, setLixeira] = useState<Projeto[]>([]);
@@ -2454,14 +2465,153 @@ export default function EditorPage() {
     return 'Alterações';
   }
 
+  function registrarAlteracao(desc: string) {
+    if (!desc) return;
+    const log = alteracoesLog.current;
+    if (log[log.length - 1] !== desc) {
+      log.push(desc);
+      if (log.length > 25) log.shift();
+    }
+  }
+
   function snap(desc?: string) {
     const ult = histRef.current[histRef.current.length - 1];
     if (ult && ult.v === vertices && ult.conf === confrontantes && ult.cpl === confrontantePorLado && ult.obj === objetos && ult.ig === verticesIgnorados && ult.pc === plantaConfig) return;
+    
+    if (desc) {
+      registrarAlteracao(desc);
+    } else if (ult) {
+      const estadoAtual: FotoHist = { v: vertices, conf: confrontantes, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig };
+      const autoDesc = obterDescricaoDiferenca(estadoAtual, ult);
+      if (autoDesc && autoDesc !== 'Alterações') {
+        registrarAlteracao(autoDesc);
+      }
+    }
+
     histRef.current.push({ v: vertices, conf: confrontantes, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig, desc });
     if (histRef.current.length > 60) histRef.current.shift();
     redoRef.current = [];
     setHistCount(histRef.current.length);
     setRedoCount(0);
+  }
+
+  function obterListaAlteracoesDetalhadas(): string[] {
+    const lista: string[] = [...alteracoesLog.current];
+
+    if (estadoBaseRef.current) {
+      const base = estadoBaseRef.current;
+
+      // 1. Vértices Adicionados
+      const adicionados = vertices.filter((v) => !base.v.some((b) => b.id === v.id));
+      if (adicionados.length > 0) {
+        if (adicionados.length <= 3) {
+          adicionados.forEach((v) => lista.push(`Adicionou vértice ${v.nome}`));
+        } else {
+          lista.push(`Importou/adicionou ${adicionados.length} novos vértices`);
+        }
+      }
+
+      // 2. Vértices Excluídos
+      const removidos = base.v.filter((b) => !vertices.some((v) => v.id === b.id));
+      if (removidos.length > 0) {
+        if (removidos.length <= 3) {
+          removidos.forEach((b) => lista.push(`Excluiu vértice ${b.nome}`));
+        } else {
+          lista.push(`Removeu ${removidos.length} vértices do polígono`);
+        }
+      }
+
+      // 3. Altitudes Alteradas
+      const altAlterada = vertices.filter((v) => {
+        const b = base.v.find((x) => x.id === v.id);
+        return b && Number.isFinite(v.elevacao) && Number.isFinite(b.elevacao) && Math.abs(v.elevacao - b.elevacao) > 0.001;
+      });
+      if (altAlterada.length > 0) {
+        if (altAlterada.length <= 2) {
+          altAlterada.forEach((v) => {
+            const b = base.v.find((x) => x.id === v.id)!;
+            lista.push(`Alterou altitude do vértice ${v.nome} (${b.elevacao.toFixed(2)}m ➔ ${v.elevacao.toFixed(2)}m)`);
+          });
+        } else {
+          lista.push(`Alterou altitude de ${altAlterada.length} vértices`);
+        }
+      }
+
+      // 4. Renomeações
+      const renomeados = vertices.filter((v) => {
+        const b = base.v.find((x) => x.id === v.id);
+        return b && v.nome !== b.nome;
+      });
+      if (renomeados.length > 0) {
+        if (renomeados.length <= 2) {
+          renomeados.forEach((v) => {
+            const b = base.v.find((x) => x.id === v.id)!;
+            lista.push(`Renomeou vértice ${b.nome} ➔ ${v.nome}`);
+          });
+        } else {
+          lista.push(`Renomeou ${renomeados.length} vértices em lote`);
+        }
+      }
+
+      // 5. Vértices Movidos (coordenadas planas)
+      const movidos = vertices.filter((v) => {
+        const b = base.v.find((x) => x.id === v.id);
+        return b && (Math.abs(v.leste - b.leste) > 0.001 || Math.abs(v.norte - b.norte) > 0.001);
+      });
+      if (movidos.length > 0 && adicionados.length === 0) {
+        if (movidos.length <= 2) {
+          movidos.forEach((v) => lista.push(`Moveu posição do vértice ${v.nome}`));
+        } else {
+          lista.push(`Moveu posição de ${movidos.length} vértices`);
+        }
+      }
+
+      // 6. Vértices Desconsiderados / Reincluídos
+      const novoseg = verticesIgnorados.filter((ig) => !base.ig.some((b) => b.id === ig.id));
+      novoseg.forEach((ig) => lista.push(`Desconsiderou vértice ${ig.nome}`));
+
+      const voltaram = base.ig.filter((b) => !verticesIgnorados.some((ig) => ig.id === b.id));
+      voltaram.forEach((b) => lista.push(`Reincluiu vértice solto ${b.nome}`));
+
+      // 7. Confrontantes
+      const confNovos = confrontantes.filter((c) => !base.conf.some((b) => b.id === c.id));
+      confNovos.forEach((c) => lista.push(`Adicionou confrontante ${c.nome}`));
+
+      const confEditados = confrontantes.filter((c) => {
+        const b = base.conf.find((x) => x.id === c.id);
+        return b && (c.nome !== b.nome || c.matricula !== b.matricula || c.cpf !== b.cpf || c.tipoLimite !== b.tipoLimite);
+      });
+      confEditados.forEach((c) => lista.push(`Editou dados do confrontante ${c.nome}`));
+
+      const confMovidos = confrontantes.filter((c) => {
+        const b = base.conf.find((x) => x.id === c.id);
+        return b && (JSON.stringify(c.posUtmRelativo) !== JSON.stringify(b.posUtmRelativo) || JSON.stringify(c.posRotulo) !== JSON.stringify(b.posRotulo));
+      });
+      if (confMovidos.length > 0) {
+        if (confMovidos.length <= 2) {
+          confMovidos.forEach((c) => lista.push(`Moveu caixa do confrontante ${c.nome}`));
+        } else {
+          lista.push(`Moveu caixas de ${confMovidos.length} confrontantes`);
+        }
+      }
+
+      // 8. Imóvel
+      if (base.denom !== undefined && imovel.denominacao !== base.denom) {
+        lista.push(`Alterou denominação do imóvel ("${imovel.denominacao}")`);
+      }
+      if (base.prop !== undefined && imovel.proprietario !== base.prop) {
+        lista.push(`Alterou proprietário ("${imovel.proprietario}")`);
+      }
+      if (base.mat !== undefined && imovel.matricula !== base.mat) {
+        lista.push(`Alterou matrícula ("${imovel.matricula}")`);
+      }
+    }
+
+    const dedup: string[] = [];
+    lista.forEach((item) => {
+      if (item && !dedup.includes(item)) dedup.push(item);
+    });
+    return dedup;
   }
 
   function aplicarFoto(s: FotoHist) {
@@ -6938,6 +7088,28 @@ export default function EditorPage() {
   function gerarResumoSalvamento(): string {
     const linhas: string[] = [];
     
+    if (salvarLaranja) {
+      const alteracoes = obterListaAlteracoesDetalhadas();
+      linhas.push(`⚠️ MODIFICAÇÕES PENDENTES (${alteracoes.length} alteração/ões):`);
+      if (alteracoes.length > 0) {
+        alteracoes.slice(0, 10).forEach((alt) => {
+          linhas.push(`  • ${alt}`);
+        });
+        if (alteracoes.length > 10) {
+          linhas.push(`  • ... e mais ${alteracoes.length - 10} modificações`);
+        }
+      } else {
+        linhas.push(`  • Alterações locais pendentes de salvamento`);
+      }
+      linhas.push('──────────────────────────────');
+      linhas.push('📍 DADOS ATUAIS DO PROJETO:');
+    } else {
+      linhas.push('✓ PROJETO ARMAZENADO E SINCRONIZADO');
+      linhas.push('Todas as edições estão salvas com segurança.');
+      linhas.push('──────────────────────────────');
+      linhas.push('📍 DADOS DO PROJETO:');
+    }
+
     // Imóvel
     const nomeImovel = imovel.denominacao || 'Sem denominação';
     const matImovel = imovel.matricula ? ` (Matrícula: ${imovel.matricula})` : '';
@@ -6959,7 +7131,7 @@ export default function EditorPage() {
     const areaTexto = areaCalcHa > 0 ? `${areaCalcHa.toFixed(4).replace('.', ',')} ha` : '0 ha';
     linhas.push(`• Gleba Ativa: ${verticesCont} vértices (${areaTexto})`);
     if (totalGlebas > 1) {
-      linhas.push(`• Total de Glebas no Projeto: ${totalGlebas} glebas`);
+      linhas.push(`• Total de Glebas: ${totalGlebas}`);
     }
 
     // Confrontantes
@@ -6972,20 +7144,8 @@ export default function EditorPage() {
       linhas.push(`• Responsável Técnico: ${tecnico.nome} (${tecnico.conselho || 'CFT/CREA'})`);
     }
 
-    // Status
-    const statusSave = salvarLaranja 
-      ? '⚠️ Modificações pendentes de salvamento (Clique para salvar)' 
-      : '✓ Projeto armazenado e sincronizado';
-
-    const tituloCabecalho = salvarLaranja
-      ? 'RESUMO DO PROJETO (ALTERAÇÕES PENDENTES):'
-      : 'DADOS DO PROJETO ARMAZENADO:';
-    
     return [
       `SALVAR PROJETO (${obterAtalhoLateral('salvar', 'sv')})`,
-      statusSave,
-      '──────────────────────────────',
-      tituloCabecalho,
       ...linhas
     ].join('\n');
   }
@@ -7071,6 +7231,17 @@ export default function EditorPage() {
         setProjetoId(id);
         setAbertoEm(p.atualizadoEm);
         setSalvoOk(true); setSalvoNuvem(destino === 'nuvem'); // verde só se foi pro banco na nuvem
+        alteracoesLog.current = [];
+        estadoBaseRef.current = {
+          v: vertices,
+          conf: confrontantes,
+          cpl: confrontantePorLado,
+          obj: objetos,
+          ig: verticesIgnorados,
+          denom: imovel.denominacao,
+          prop: imovel.proprietario,
+          mat: imovel.matricula,
+        };
         autoSave.marcarComoSalvo();
         setSalvarLaranja(false);
         aviso(destino === 'nuvem'
@@ -7083,6 +7254,17 @@ export default function EditorPage() {
           // o projeto FOI salvo localmente (só a nuvem negou) — trabalho seguro, mas o botão fica
           // AMARELO (não verde) pra deixar claro que ainda não subiu pro banco
           setSalvoOk(true); setSalvoNuvem(false);
+          alteracoesLog.current = [];
+          estadoBaseRef.current = {
+            v: vertices,
+            conf: confrontantes,
+            cpl: confrontantePorLado,
+            obj: objetos,
+            ig: verticesIgnorados,
+            denom: imovel.denominacao,
+            prop: imovel.proprietario,
+            mat: imovel.matricula,
+          };
           autoSave.marcarComoSalvo();
           setSalvarLaranja(false);
           aviso('Salvo localmente. A nuvem negou: publique as regras do Firestore (firebase deploy --only firestore:rules).');
@@ -7424,6 +7606,18 @@ export default function EditorPage() {
     setVerticesIgnorados(p.verticesIgnorados ?? []);
     setGradeAltimetrica(p.gradeAltimetrica ?? (p as unknown as { ga?: typeof p.gradeAltimetrica }).ga ?? []);
     setVerticesOnlineElev(p.verticesOnlineElev ?? {});
+    alteracoesLog.current = [];
+    const g0 = p.glebas[0];
+    estadoBaseRef.current = {
+      v: g0?.vertices || [],
+      conf: g0?.confrontantes || [],
+      cpl: g0?.confrontantePorLado || {},
+      obj: g0?.objetos || [],
+      ig: p.verticesIgnorados || [],
+      denom: p.imovel?.denominacao,
+      prop: p.imovel?.proprietario,
+      mat: p.imovel?.matricula,
+    };
     autoSave.resetBaseline(); // recém-carregado = baseline = estado atual, sem disquete
     setSalvarLaranja(false);
     setSalvoOk(true);
