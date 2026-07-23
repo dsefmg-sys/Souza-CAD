@@ -713,7 +713,7 @@ export default function Planta({
   const raioDens = offBase * 3.5;            // raio (tela) para medir aglomeração de vértices
   const initialRotuloVert = vertices.map((v, i) => {
     const vx = ptsScr[i].x, vy = ptsScr[i].y;
-    if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, i, x: sx(u.leste), y: sy(u.norte), hasPos: true }; }
+    if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); const px = sx(u.leste), py = sy(u.norte); return { v, i, x: px, y: py, xProximo: px, yProximo: py, hasPos: true }; }
     // direção pra FORA = oposto da bissetriz do ângulo interno (média das duas arestas)
     const prev = ptsScr[(i - 1 + nV) % nV], next = ptsScr[(i + 1) % nV];
     const n1x = prev.x - vx, n1y = prev.y - vy, l1 = Math.hypot(n1x, n1y) || 1;
@@ -729,7 +729,13 @@ export default function Planta({
     let vizinhos = 0;
     for (let k = 0; k < nV; k++) { if (k === i) continue; if (Math.hypot(ptsScr[k].x - vx, ptsScr[k].y - vy) < raioDens) vizinhos++; }
     const off = offBase + Math.min(fzRot * 10, vizinhos * fzRot * 1.8);
-    return { v, i, x: vx + ox * off, y: vy + oy * off, hasPos: false };
+    const offProx = 8.0; // Posição no Modo B: 8px de distância do ponto, próximo sem cobrir o símbolo
+    return {
+      v, i,
+      x: vx + ox * off, y: vy + oy * off,
+      xProximo: vx + ox * offProx, yProximo: vy + oy * offProx,
+      hasPos: false
+    };
   });
 
   // Afasta rótulos que se sobrepõem entre si E que caem em cima de qualquer vértice.
@@ -765,7 +771,7 @@ export default function Planta({
     }
   }
 
-  const rotuloVert = initialRotuloVert.map((r) => ({ v: r.v, i: r.i, x: r.x, y: r.y }));
+  const rotuloVert = initialRotuloVert.map((r) => ({ v: r.v, i: r.i, x: r.x, y: r.y, xProximo: r.xProximo, yProximo: r.yProximo }));
   // rótulo exibido do vértice: código SIGEF (padrão) ou P1, P2, P3… (topografia convencional)
   const nomeVertice = (v: Vertex, i: number) => {
     if (config.estiloVertice === 'v') return `V${i + 1}`;
@@ -2439,7 +2445,7 @@ export default function Planta({
       })()}
 
       {/* vértices + códigos (rótulo na posição arrastada, se houver; editável) */}
-      {rotuloVert.map(({ v, i, x, y }) => {
+      {rotuloVert.map(({ v, i, x, y, xProximo, yProximo }) => {
         const vx = sx(v.leste), vy = sy(v.norte);
         const vsel = editavel && selecionadoId === `vsel.${v.id}`;
         return (
@@ -2483,9 +2489,10 @@ export default function Planta({
               const isModoB = config.modoRotulosPlanta === 'proximo';
               const ovR = getOverride(`vert.${v.id}`);
               const hasCustomDrag = ovR?.dx != null || ovR?.dy != null;
-              const posX = hasCustomDrag ? vx : (isModoB ? vx + 4 : x);
-              const posY = hasCustomDrag ? vy : (isModoB ? vy - 4 : y);
-              const fz = isModoB ? Math.max(5, fonteRot - 1.5) : Math.max(6, fonteRot - 0.5);
+              const posX = hasCustomDrag ? vx : (isModoB ? xProximo : x);
+              const posY = hasCustomDrag ? vy : (isModoB ? yProximo : y);
+              // Modo B reduz exatamente 20% (-20%) em relação ao tamanho base de Modo A (fonteRot - 0.5)
+              const fz = isModoB ? Math.max(5, (fonteRot - 0.5) * 0.8) : Math.max(6, fonteRot - 0.5);
               return (
                 <Ted
                   x={posX}
@@ -2543,25 +2550,31 @@ export default function Planta({
         if (vsv.length < 3) return null;
         const gcx = vsv.reduce((s, v) => s + sx(v.leste), 0) / vsv.length;
         const gcy = vsv.reduce((s, v) => s + sy(v.norte), 0) / vsv.length;
+        const isModoB = config.modoRotulosPlanta === 'proximo';
 
         return vsv.map((v, i) => {
           const vx = sx(v.leste), vy = sy(v.norte);
           let rx = vx, ry = vy;
+          let rxProx = vx + 8, ryProx = vy - 8;
           
           if (v.posRotulo) {
             const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio);
             rx = sx(u.leste);
             ry = sy(u.norte);
+            rxProx = rx; ryProx = ry;
           } else {
             const cdx = vx - gcx, cdy = vy - gcy;
             const len = Math.hypot(cdx, cdy) || 1;
             const ox = cdx / len, oy = cdy / len;
-            const off = Math.max(24, Math.max(6, fonteRot - 0.5) * 2.5); // offBase
+            const off = Math.max(24, Math.max(6, fonteRot - 0.5) * 2.5);
             rx = vx + ox * off;
             ry = vy + oy * off;
+            rxProx = vx + ox * 8.0;
+            ryProx = vy + oy * 8.0;
           }
 
           const rot = nomeVertice(v, i);
+          const fz = isModoB ? Math.max(5, (fonteRot - 0.5) * 0.8) : Math.max(6, fonteRot - 0.5);
 
           return (
             <g key={`og_vtx_${oIdx}_${v.id || i}`}>
@@ -2570,7 +2583,7 @@ export default function Planta({
                 <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} corCustom={v.tipo === 'M' ? config.corVerticeM : v.tipo === 'P' ? config.corVerticeP : undefined} />
               )}
               {/* Linha guia e Ted se mostrarRotulosPlanta */}
-              {config.mostrarRotulosPlanta !== false && (() => {
+              {config.mostrarRotulosPlanta !== false && !isModoB && (() => {
                 const ovR = getOverride(`vert.${v.id}`);
                 const lxr = rx + (ovR.dx ?? 0), lyr = ry + (ovR.dy ?? 0);
                 const fzr = Math.max(6, fonteRot - 0.5) * (ovR.escala ?? 1);
@@ -2584,66 +2597,7 @@ export default function Planta({
                 return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={alvoX - ux * 3} y2={midY - uy * 3} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
               })()}
               {config.mostrarRotulosPlanta !== false && (
-                <Ted x={rx} y={ry} base={rot} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
-              )}
-            </g>
-          );
-        });
-      })}
-
-      {/* Vértices + rótulos de outras glebas ativas/principais */}
-      {outrasGlebas.map((g, oIdx) => {
-        if (g.visivel === false) return null;
-        if (g.tipoGleba !== 'principal' && g.tipoGleba !== undefined) return null;
-        const vtxs = g.vertices || [];
-        if (vtxs.length < 3) return null;
-
-        const vsv = vtxs.filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte));
-        if (vsv.length < 3) return null;
-        const gcx = vsv.reduce((s, v) => s + sx(v.leste), 0) / vsv.length;
-        const gcy = vsv.reduce((s, v) => s + sy(v.norte), 0) / vsv.length;
-
-        return vsv.map((v, i) => {
-          const vx = sx(v.leste), vy = sy(v.norte);
-          let rx = vx, ry = vy;
-          
-          if (v.posRotulo) {
-            const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio);
-            rx = sx(u.leste);
-            ry = sy(u.norte);
-          } else {
-            const cdx = vx - gcx, cdy = vy - gcy;
-            const len = Math.hypot(cdx, cdy) || 1;
-            const ox = cdx / len, oy = cdy / len;
-            const off = Math.max(24, Math.max(6, fonteRot - 0.5) * 2.5); // offBase
-            rx = vx + ox * off;
-            ry = vy + oy * off;
-          }
-
-          const rot = nomeVertice(v, i);
-
-          return (
-            <g key={`og_vtx_${oIdx}_${v.id || i}`}>
-              {/* Símbolo do vértice */}
-              {config.mostrarSimbolosVertices !== false && (
-                <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} corCustom={v.tipo === 'M' ? config.corVerticeM : v.tipo === 'P' ? config.corVerticeP : undefined} />
-              )}
-              {/* Linha guia e Ted se mostrarRotulosPlanta */}
-              {config.mostrarRotulosPlanta !== false && (() => {
-                const ovR = getOverride(`vert.${v.id}`);
-                const lxr = rx + (ovR.dx ?? 0), lyr = ry + (ovR.dy ?? 0);
-                const fzr = Math.max(6, fonteRot - 0.5) * (ovR.escala ?? 1);
-                const w = Math.max(fzr, rot.length * fzr * 0.6);
-                const leftX = lxr, rightX = lxr + w;
-                const midY = lyr - fzr * 0.35;
-                const alvoX = Math.abs(vx - leftX) <= Math.abs(vx - rightX) ? leftX : rightX;
-                const dGuia = Math.hypot(alvoX - vx, midY - vy);
-                if (dGuia < 12) return null;
-                const ux = (alvoX - vx) / dGuia, uy = (midY - vy) / dGuia;
-                return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={alvoX - ux * 3} y2={midY - uy * 3} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
-              })()}
-              {config.mostrarRotulosPlanta !== false && (
-                <Ted x={rx} y={ry} base={rot} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
+                <Ted x={isModoB ? rxProx : rx} y={isModoB ? ryProx : ry} base={rot} size={fz} fill="#000" fundoBranco={isModoB} halo={!isModoB} {...tProps(`vert.${v.id}`)} />
               )}
             </g>
           );
