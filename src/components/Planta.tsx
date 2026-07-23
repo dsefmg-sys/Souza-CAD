@@ -9,6 +9,7 @@ import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm, utmParaGeo, aproximarDeclinacaoMagnetica } from '@/lib/topo/coords';
 import { distanciaCota, obterPontosCotaOffset } from '@/lib/topo/objetos';
 import { REPRES_LABEL, corDivisa, obterTipoLimiteEfetivo, obterNomeConfrontanteExibicao } from '@/lib/topo/sigefVocab';
+import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { rotuloPapelProprietario } from '@/lib/export/papelProprietario';
 import type { ObjetoDesenho } from '@/lib/topo/types';
 import { calcularAreaSgl } from '@/lib/topo/sgl';
@@ -650,7 +651,7 @@ export default function Planta({
         const centroNorte = (vA.norte + vB.norte) / 2;
         const posX = sx(centroLeste + c.posUtmRelativo.dLeste);
         const posY = sy(centroNorte + c.posUtmRelativo.dNorte);
-        return { c, x: clampX(posX), y: clampY(posY), temSegmento };
+        return { c, x: clampX(posX), y: clampY(posY), temSegmento, segCenterX: sx(centroLeste), segCenterY: sy(centroNorte) };
       }
     }
     if (c.posRotulo) {
@@ -692,7 +693,7 @@ export default function Planta({
         }
       }
       
-      return { c, x: clampX(px), y: clampY(py), temSegmento: true };
+      return { c, x: clampX(px), y: clampY(py), temSegmento: true, segCenterX: mx, segCenterY: my };
     }
 
     // Confrontante cadastrado mas sem segmento atribuído ainda:
@@ -2297,6 +2298,7 @@ export default function Planta({
           });
         }
 
+        const corConf = corPorConfrontante(c.id, c);
         return (
           <g key={i}
             style={editavel ? { cursor: 'move' } : undefined}
@@ -2310,15 +2312,30 @@ export default function Planta({
               folhaLast.current = u;
               captura(e);
             } : undefined}>
+            {/* Linha de chamada (Leader Line) pontilhada na cor do confrontante ligando a divisa à caixa de assinatura */}
+            {r.segCenterX !== undefined && r.segCenterY !== undefined && (
+              <line
+                x1={r.segCenterX}
+                y1={r.segCenterY}
+                x2={px}
+                y2={py}
+                stroke={corConf}
+                strokeWidth={1.2}
+                strokeDasharray="4 4"
+                opacity={0.8}
+                pointerEvents="none"
+              />
+            )}
             <rect
               x={px - half - 8}
               y={top}
               width={boxW}
               height={boxH}
               fill="#ffffff"
-              fillOpacity={0.001}
-              stroke="#cbd5e1"
-              strokeWidth={0.7}
+              fillOpacity={0.96}
+              stroke={corConf}
+              strokeWidth={1.2}
+              strokeDasharray="4 4"
               rx={4}
               ry={4}
               style={{ pointerEvents: 'all' }}
