@@ -2037,6 +2037,42 @@ export default function MapEditor(props: Props) {
 
         if (centroLat === undefined || centroLon === undefined) return null;
 
+        // Calcula vetor normal apontando para fora do polígono (centroide)
+        let pushLat = 0;
+        let pushLon = 0;
+        if (vA && vB && validos.length >= 3) {
+          const centroidLat = validos.reduce((sum, v) => sum + v.lat, 0) / validos.length;
+          const centroidLon = validos.reduce((sum, v) => sum + v.lon, 0) / validos.length;
+          
+          const dy = vB.lat - vA.lat;
+          const dx = vB.lon - vA.lon;
+          
+          // Candidatos perpendiculares
+          const p1Lat = -dx;
+          const p1Lon = dy;
+          const p2Lat = dx;
+          const p2Lon = -dy;
+          
+          // Vetor do centroide ao meio do segmento
+          const outLat = centroLat - centroidLat;
+          const outLon = centroLon - centroidLon;
+          
+          // Escolhe o candidato que aponta para fora (maior produto escalar)
+          const dot1 = p1Lat * outLat + p1Lon * outLon;
+          const dot2 = p2Lat * outLat + p2Lon * outLon;
+          
+          const pLat = dot1 > dot2 ? p1Lat : p2Lat;
+          const pLon = dot1 > dot2 ? p1Lon : p2Lon;
+          
+          const len = Math.sqrt(pLat * pLat + pLon * pLon);
+          if (len > 0) {
+            // Deslocamento de ~20-25 metros em graus lat/lon
+            const offsetDeg = 0.00022;
+            pushLat = (pLat / len) * offsetDeg;
+            pushLon = (pLon / len) * offsetDeg;
+          }
+        }
+
         let posLat: number;
         let posLon: number;
 
@@ -2047,8 +2083,8 @@ export default function MapEditor(props: Props) {
           posLat = c.posRotulo.lat;
           posLon = c.posRotulo.lon;
         } else {
-          posLat = centroLat;
-          posLon = centroLon;
+          posLat = centroLat + pushLat;
+          posLon = centroLon + pushLon;
         }
 
         const corConf = corPorConfrontante(c.id, c);
