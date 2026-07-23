@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { ImovelData, EscritorioData, TecnicoData } from '../topo/types';
-import { gerarPdfLTCA, gerarPdfFinanciamento, gerarPdfPRADA } from './meioAmbiente';
-import { gerarPdfLaudoUsucapiao, gerarPdfAtaPosse } from './usucapiao';
-import { gerarPdfLaudoAvaliacao } from './avaliacao';
-import { gerarPdfPeticaoUsucapiao, gerarPdfNotificacaoExtrajudicial } from './juridico';
-import { gerarPdfCRF, gerarPdfPRF } from './reurb';
-import { gerarPdfMemorialLoteamento, gerarPdfLaudoInfraestrutura } from './loteamento';
-import { gerarPdfLaudoAptidao, gerarPdfCronogramaFinanceiro } from './creditoRural';
+import { gerarPdfLTCA, gerarPdfFinanciamento, gerarPdfPRADA, gerarDocxLaudoAmbiental } from './meioAmbiente';
+import { gerarPdfLaudoUsucapiao, gerarPdfAtaPosse, gerarDocxLaudoUsucapiao, gerarDocxAtaPosse } from './usucapiao';
+import { gerarPdfLaudoAvaliacao, gerarDocxAvaliacaoImovel } from './avaliacao';
+import { gerarPdfPeticaoUsucapiao, gerarPdfNotificacaoExtrajudicial, gerarDocxParecerJuridico } from './juridico';
+import { gerarPdfCRF, gerarPdfPRF, gerarDocxLaudoReurb } from './reurb';
+import { gerarPdfMemorialLoteamento, gerarPdfLaudoInfraestrutura, gerarDocxQuadroLoteamento } from './loteamento';
+import { gerarPdfLaudoAptidao, gerarPdfCronogramaFinanceiro, gerarDocxLaudoAptidao, gerarDocxCronogramaFinanceiro, gerarDocxProjetoCreditoRural } from './creditoRural';
 import { gerarContratoLoteDocx } from './contratoLote';
 
 const IMOVEL_TESTE: any = {
@@ -215,6 +215,46 @@ describe('Módulos Adicionais - Exporters', () => {
       });
       expect(docApt).toBeDefined();
       expect(docCron).toBeDefined();
+    });
+
+    it('deve gerar DOCX de Laudo, Cronograma e Projeto Completo de Crédito Rural', async () => {
+      const dadosCredito = {
+        aptidaoSolo: 'Classe II',
+        culturaPrincipal: 'Soja',
+        capacidadePastagem: '2.0 U.A.',
+        finalidadeCredito: 'Investimento',
+        linhaCredito: 'PRONAMP',
+        agenteFinanceiro: 'Banco do Brasil',
+        cronogramaEtapas: [{ id: '1', etapa: 'Preparo', mes: 1, valor: 50000 }]
+      };
+      const blobApt = await gerarDocxLaudoAptidao(IMOVEL_TESTE, ESCRITORIO_TESTE, TECNICO_TESTE, dadosCredito);
+      const blobCron = await gerarDocxCronogramaFinanceiro(IMOVEL_TESTE, ESCRITORIO_TESTE, TECNICO_TESTE, dadosCredito);
+      const blobProj = await gerarDocxProjetoCreditoRural(IMOVEL_TESTE, ESCRITORIO_TESTE, TECNICO_TESTE, dadosCredito);
+      expect(blobApt).toBeDefined();
+      expect(blobCron).toBeDefined();
+      expect(blobProj).toBeDefined();
+    });
+  });
+
+  describe('Exportação Editável Word (.docx) dos Módulos Extras', () => {
+    it('deve gerar DOCX dos laudos de Usucapião, Avaliação, Jurídico, REURB, Loteamento e Meio Ambiente', async () => {
+      const dadosUsucapiao = { tempoPosse: '15 anos', origemPosse: 'Posse Mansa', tipoUsucapiao: 'Extraordinária', detalhesPosse: 'Cercado', anuenteVizinhos: true };
+      const dadosJuridico = { foroComarca: 'Comarca', advogadoNome: 'Dr. Roberto', advogadoOab: '12345/MG', qualificacaoFatos: 'Fatos', direitoFundamento: 'Direito' };
+      const blobUsucapiao = await gerarDocxLaudoUsucapiao(IMOVEL_TESTE, ESCRITORIO_TESTE, TECNICO_TESTE, dadosUsucapiao);
+      const blobAta = await gerarDocxAtaPosse(IMOVEL_TESTE, ESCRITORIO_TESTE, TECNICO_TESTE, dadosUsucapiao);
+      const blobAvaliacao = await gerarDocxAvaliacaoImovel(IMOVEL_TESTE, ESCRITORIO_TESTE, TECNICO_TESTE, { tipoImovel: 'rural', aptidaoSolo: 'Boa', conservacaoEdif: 'Boa', valorUnitario: '50000', benfeitorias: 'Casa', metodologia: 'Direto' });
+      const blobJuridico = await gerarDocxParecerJuridico(IMOVEL_TESTE, ESCRITORIO_TESTE, TECNICO_TESTE, dadosJuridico);
+      const blobReurb = await gerarDocxLaudoReurb(IMOVEL_TESTE, ESCRITORIO_TESTE, TECNICO_TESTE, { modalidadeReurb: 'REURB-S', decretoMunicipal: 'Dec 123', classificacaoSocial: 'Baixa Renda', infraBasica: 'Agua', fundamentoReurb: 'Lei 13.465' });
+      const blobLoteamento = await gerarDocxQuadroLoteamento(IMOVEL_TESTE, ESCRITORIO_TESTE, TECNICO_TESTE, { numeroLotes: '50', areaVerde: '1000', areaRuas: '2000', volCorte: '500', volAterro: '400', infraAgua: true, infraEsgoto: true, infraLuz: true, infraDrenagem: true });
+      const blobAmbiental = await gerarDocxLaudoAmbiental(IMOVEL_TESTE, ESCRITORIO_TESTE, TECNICO_TESTE, { vegetacao: 'Cerrado', conservacao: 'Preservado', corposAgua: 'Córrego', appEstimada: '2.0', fauna: 'Aves', diagnostico: 'Conforme' });
+
+      expect(blobUsucapiao).toBeDefined();
+      expect(blobAta).toBeDefined();
+      expect(blobAvaliacao).toBeDefined();
+      expect(blobJuridico).toBeDefined();
+      expect(blobReurb).toBeDefined();
+      expect(blobLoteamento).toBeDefined();
+      expect(blobAmbiental).toBeDefined();
     });
   });
 
