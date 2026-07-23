@@ -1739,24 +1739,6 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     </div>
                   </div>
                 </div>
-
-                <div className="space-y-2 rounded-sm border p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><DollarSign className="size-3.5" /> Tabela de preços</div>
-                    <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={adicionarPreco}><Plus className="size-3.5" /> Adicionar</Button>
-                  </div>
-                  <p className="text-[11px] leading-tight text-muted-foreground">Puxe estes valores com um clique na gestão financeira do projeto.</p>
-                  <div className="space-y-1.5">
-                    {precos.length === 0 && <div className="text-[11px] text-muted-foreground">Nenhum preço cadastrado.</div>}
-                    {precos.map((p) => (
-                      <div key={p.id} className="flex items-center gap-1.5">
-                        <Input className="h-8 flex-1 text-xs" placeholder="Serviço" value={p.servico} onChange={(e) => mudarPreco(p.id, 'servico', e.target.value)} />
-                        <Input className="h-8 w-24 text-xs" type="number" step="0.01" placeholder="R$" value={p.valor || ''} onChange={(e) => mudarPreco(p.id, 'valor', e.target.value)} />
-                        <Button size="sm" variant="ghost" className="size-8 shrink-0 p-0 text-destructive" title="Remover este serviço" onClick={() => removerPreco(p.id)}><Trash2 className="size-3.5" /></Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               <div className="space-y-3 border-t md:border-t-0 md:border-l md:pl-4 pt-3 md:pt-0">

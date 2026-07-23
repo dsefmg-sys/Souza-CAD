@@ -136,8 +136,8 @@ export const ATALHOS_COMANDO_PADRAO: Record<string, string> = {
 };
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {
-  exigirConjuge: false,
-  exigirCns: false,
+  exigirConjuge: true,
+  exigirCns: true,
   mostrarDicasEducativas: true,
   bloquearExportacaoIncompleta: true,
   nivelExperiencia: 'iniciante',
@@ -176,6 +176,10 @@ export function carregarPreferencias(): PreferenciasApp {
     const parsed = JSON.parse(raw) as Partial<PreferenciasApp>;
     return {
       ...PREFERENCIAS_PADRAO,
+      exigirConjuge: parsed.exigirConjuge ?? true,
+      exigirCns: parsed.exigirCns ?? true,
+      confirmarAntesApagar: parsed.confirmarAntesApagar ?? true,
+      mostrarAssinaturaConfrontantes: parsed.mostrarAssinaturaConfrontantes ?? true,
       ...parsed,
       atalhosF: parsed.atalhosF ? { ...ATALHOS_F_PADRAO, ...parsed.atalhosF } : ATALHOS_F_PADRAO,
       atalhosComando: parsed.atalhosComando ? { ...ATALHOS_COMANDO_PADRAO, ...parsed.atalhosComando } : ATALHOS_COMANDO_PADRAO,
