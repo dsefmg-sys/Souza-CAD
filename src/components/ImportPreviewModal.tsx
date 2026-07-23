@@ -4,13 +4,25 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Check, Eye, Satellite, AlertTriangle, GripVertical } from 'lucide-react';
+import {
+  Check,
+  Eye,
+  Satellite,
+  AlertTriangle,
+  GripVertical,
+  CheckCircle2,
+  XCircle,
+  Ban,
+  Layers,
+  Sparkles,
+  MapPin,
+} from 'lucide-react';
 import { utmParaGeo } from '@/lib/topo/coords';
 import ErrorBoundary from './ErrorBoundary';
 
 const PreviaSatelite = dynamic(() => import('./PreviaSatelite'), {
   ssr: false,
-  loading: () => <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Carregando satélite…</div>,
+  loading: () => <div className="flex h-full items-center justify-center text-sm text-muted-foreground font-medium">Carregando mapa satélite…</div>,
 });
 
 export interface SelecaoImport {
@@ -40,7 +52,7 @@ function anelCruzado(ring: [number, number][]): boolean {
   for (let i = 0; i < n; i++) {
     const a = ring[i], b = ring[(i + 1) % n];
     for (let j = i + 1; j < n; j++) {
-      if ((i + 1) % n === j || (j + 1) % n === i || i === j) continue; // vizinhas compartilham vértice
+      if ((i + 1) % n === j || (j + 1) % n === i || i === j) continue;
       const c = ring[j], d = ring[(j + 1) % n];
       if (segCruza(a, b, c, d)) return true;
     }
@@ -68,8 +80,6 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
   const [nomes, setNomes] = useState<string[]>([]);
   const [destaque, setDestaque] = useState<number | null>(null);
   const [arrastando, setArrastando] = useState<number | null>(null);
-  // satélite: se falhar (chunk de rede, remount rápido do Leaflet...), tenta sozinho UMA vez antes
-  // de deixar o botão manual — a maioria das falhas aqui é passageira e some no 2º carregamento.
   const [satRetryKey, setSatRetryKey] = useState(0);
   const satAutoRetryFeito = useRef(false);
 
@@ -85,9 +95,9 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
     setSatRetryKey(0);
     satAutoRetryFeito.current = false;
     setTituloServico('GEORREFERENCIAMENTO DE IMÓVEIS RURAIS');
-  }, [open, zona, n]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, zona, n]);
 
-  // converte UTM -> lat/lon com o fuso ESCOLHIDO (recalcula ao trocar o fuso)
+  // converte UTM -> lat/lon com o fuso ESCOLHIDO
   const ll = useMemo(() => pontos.map((p) => {
     const g = utmParaGeo(p.leste, p.norte, zonaSel, hemisferio);
     return [g.lat, g.lon] as [number, number];
@@ -96,9 +106,6 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
   const foraDaFaixa = ll.some(([la, lo]) => !Number.isFinite(la) || !Number.isFinite(lo) || la > 6 || la < -34 || lo > -28 || lo < -74);
   const fusos = (fusosPermitidos && fusosPermitidos.length ? fusosPermitidos : [18, 19, 20, 21, 22, 23, 24, 25]);
 
-  // dados do mapa: polígono passa só pelos importados + no polígono; marcadores = todos importados.
-  // Guarda contra índices "velhos" (logo após reabrir com outra quantidade de pontos, antes do
-  // useEffect reiniciar os arrays) — só usa índices que existem em `ll`/`pontos`.
   const importadosNaOrdem = ordem.filter((i) => i < n && ll[i] && pontos[i] && importar[i]);
   const poligono = importadosNaOrdem.filter((i) => noPoligono[i]).map((i) => ll[i]);
   const marcadores = importadosNaOrdem.map((i) => ({ idx: i, lat: ll[i][0], lon: ll[i][1], ativo: i === destaque, noPoligono: noPoligono[i], rotulo: nomes[i] || pontos[i].nome }));
@@ -106,7 +113,6 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
 
   const qtdImportar = importar.filter(Boolean).length;
   const qtdPoligono = importadosNaOrdem.filter((i) => noPoligono[i]).length;
-  // polígono em "8": a ordem dos pontos faz a divisa cruzar consigo mesma (área sai errada)
   const cruzado = poligono.length >= 4 && anelCruzado(poligono);
 
   function moverPara(alvo: number) {
@@ -126,40 +132,78 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[88vh] w-[92vw] max-w-[1360px] flex-col p-4 rounded-xl shadow-2xl">
-        <DialogHeader className="border-b pb-2">
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <Eye className="size-5 text-primary" /> Prévia da importação — escolha o que entra
-          </DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Desmarque <strong>Importar</strong> para não trazer um ponto. Desmarque <strong>No polígono</strong> para trazer o vértice mas o perímetro passar direto por ele.
-            Arraste pela alça para reordenar. Clique no nome pra editar. Clique no resto da linha para destacá-la no satélite.
-          </p>
+      <DialogContent className="fixed !top-0 !left-0 !right-0 !bottom-0 !inset-0 !translate-x-0 !translate-y-0 !w-screen !h-screen !max-w-none !max-h-none !rounded-none !border-none !p-4 sm:!p-5 flex flex-col bg-background z-[5000] overflow-hidden">
+        {/* CABEÇALHO */}
+        <DialogHeader className="border-b pb-3 shrink-0 flex flex-row items-center justify-between gap-4">
+          <div>
+            <DialogTitle className="flex items-center gap-2.5 text-xl font-black tracking-tight">
+              <span className="flex items-center justify-center size-8 rounded-lg bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20">
+                <Eye className="size-5" />
+              </span>
+              Prévia da Importação — Escolha o que entra
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+              Ajuste quais pontos entram no perímetro ou permanecem soltos. Arraste pela alça para reordenar a sequência da divisa.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 pr-8 shrink-0">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-card text-xs font-bold shadow-xs">
+              <span className="inline-flex size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{qtdImportar} / {n} Vértices a Importar</span>
+              <span className="text-muted-foreground">•</span>
+              <span className="text-emerald-500">{qtdPoligono} no Polígono</span>
+            </div>
+          </div>
         </DialogHeader>
 
-        {/* controle de fuso e serviço */}
-        <div className="flex flex-wrap items-center gap-3 py-2 text-sm border-b pb-3">
-          <span className="font-semibold">Fuso UTM:</span>
-          <div className="flex gap-1">
-            {fusos.map((f) => (
-              <Button key={f} size="sm" variant={f === zonaSel ? 'default' : 'outline'} className="h-8 px-3 font-bold" onClick={() => setZonaSel(f)}>{f}{hemisferio}</Button>
-            ))}
+        {/* BARRA DE CONTROLE E CONFIGURAÇÃO */}
+        <div className="flex flex-wrap items-center gap-4 py-2.5 px-3 rounded-xl border bg-muted/20 text-xs shrink-0 my-2">
+          {/* SELETOR FUSO */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="font-extrabold uppercase tracking-wider text-muted-foreground text-[11px]">Fuso UTM:</span>
+            <div className="flex gap-1 bg-background/80 p-1 rounded-xl border shadow-2xs">
+              {fusos.map((f) => {
+                const ativo = f === zonaSel;
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setZonaSel(f)}
+                    className={`h-7 px-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      ativo
+                        ? 'bg-emerald-600 text-white shadow-xs scale-105'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {f}{hemisferio}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          {foraDaFaixa
-            ? <span className="flex items-center gap-1 text-xs font-semibold text-amber-500"><AlertTriangle className="size-4" /> O imóvel caiu fora da região — fuso possivelmente errado.</span>
-            : <span className="text-xs text-muted-foreground">Confira no satélite se bate com o local real.</span>}
 
-          <div className="h-4 w-px bg-border mx-1" />
+          {foraDaFaixa ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 font-bold text-xs">
+              <AlertTriangle className="size-4 shrink-0" />
+              Fora do fuso — confira no mapa satélite!
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground font-medium hidden md:inline">Confira visualmente no satélite ao lado.</span>
+          )}
 
+          <div className="h-4 w-px bg-border hidden md:block" />
+
+          {/* SERVIÇO / TÍTULO */}
           <div className="flex items-center gap-2 flex-1 min-w-[280px]">
-            <span className="font-semibold shrink-0">Serviço/Título:</span>
+            <span className="font-extrabold uppercase tracking-wider text-muted-foreground text-[11px] shrink-0">Serviço/Título:</span>
             <input
               type="text"
               list="sugestoes-servico"
               value={tituloServico}
               onChange={(e) => setTituloServico(e.target.value.toUpperCase())}
-              placeholder="Digite ou selecione o serviço..."
-              className="flex-1 rounded-md border border-slate-200 dark:border-zinc-800 bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-bold uppercase"
+              placeholder="DIGITE O SERVIÇO..."
+              className="flex-1 rounded-xl border border-input bg-background px-3 py-1.5 text-xs font-black uppercase shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
             <datalist id="sugestoes-servico">
               <option value="GEORREFERENCIAMENTO DE IMÓVEIS RURAIS" />
@@ -171,118 +215,133 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
               <option value="RETIFICAÇÃO DE ÁREA E PERÍMETRO" />
             </datalist>
           </div>
-          <span className="ml-auto text-xs text-muted-foreground">{qtdImportar}/{n} a importar · {qtdPoligono} no polígono</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-y bg-muted/20 px-3 py-2 text-xs">
-          <span className="font-bold text-muted-foreground uppercase tracking-wider text-[10px]">Ações nos Vértices:</span>
+        {/* BARRA DE AÇÕES EM MASSA */}
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl border bg-card text-xs shrink-0 mb-2">
+          <span className="font-black text-muted-foreground uppercase tracking-wider text-[10px] mr-1">Ações em Massa:</span>
+          
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 px-2.5 text-[10px] font-black uppercase tracking-wider gap-1"
+            className="h-8 px-3 rounded-lg text-xs font-extrabold uppercase tracking-wider gap-1.5 bg-background hover:bg-emerald-500/10 hover:text-emerald-500 hover:border-emerald-500/30 transition-all"
             onClick={() => setImportar(pontos.map(() => true))}
           >
+            <CheckCircle2 className="size-3.5 text-emerald-500" />
             Importar Todos
           </Button>
+
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 px-2.5 text-[10px] font-black uppercase tracking-wider gap-1 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+            className="h-8 px-3 rounded-lg text-xs font-extrabold uppercase tracking-wider gap-1.5 bg-background hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/30 text-rose-600 dark:text-rose-400 transition-all"
             onClick={() => {
               setImportar(pontos.map(() => false));
               setNoPoligono(pontos.map(() => false));
             }}
           >
+            <XCircle className="size-3.5" />
             Não Importar Nenhum
           </Button>
+
           <div className="h-4 w-px bg-border mx-1" />
+
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 px-2.5 text-[10px] font-black uppercase tracking-wider gap-1"
+            className="h-8 px-3 rounded-lg text-xs font-extrabold uppercase tracking-wider gap-1.5 bg-background hover:bg-emerald-500/10 hover:text-emerald-500 hover:border-emerald-500/30 transition-all"
             onClick={() => setNoPoligono(pontos.map(() => true))}
           >
+            <Layers className="size-3.5 text-emerald-500" />
             Considerar Todos (No Polígono)
           </Button>
+
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 px-2.5 text-[10px] font-black uppercase tracking-wider gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+            className="h-8 px-3 rounded-lg text-xs font-extrabold uppercase tracking-wider gap-1.5 bg-background hover:bg-amber-500/10 hover:text-amber-500 hover:border-amber-500/30 text-amber-600 dark:text-amber-400 transition-all"
             onClick={() => setNoPoligono(pontos.map(() => false))}
           >
+            <Ban className="size-3.5" />
             Ignorar Todos (Fora do Polígono)
           </Button>
         </div>
 
+        {/* ALERTA SE O POLÍGONO ESTIVER CRUZADO (EM "8") */}
         {cruzado && (
-          <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+          <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3.5 py-2 text-xs font-extrabold text-amber-600 dark:text-amber-400 shrink-0 mb-2 shadow-2xs">
             <AlertTriangle className="size-4 shrink-0" />
-            A divisa está cruzando consigo mesma (forma de &quot;8&quot;) — a área sairia errada. Arraste os pontos para corrigir a ordem, ou tire do polígono o ponto fora de sequência.
+            A divisa está cruzando consigo mesma (forma de &quot;8&quot;) — a área do imóvel sairá incorreta. Arraste os pontos pela alça para ajustar a ordem do perímetro.
           </div>
         )}
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-2">
-          {/* ESQUERDA: lista completa de pontos */}
-          <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-background p-2">
+        {/* ÁREA PRINCIPAL DUPLA: TABELA NA ESQUERDA (7 COLS) | MAPA NA DIREITA (5 COLS) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 overflow-hidden">
+          {/* TABELA DE PONTOS */}
+          <div className="lg:col-span-7 flex flex-col min-h-0 rounded-xl border bg-card/60 shadow-xs overflow-hidden">
+            {/* PAINEL DE PONTO SELECIONADO */}
             {destaque !== null && pontos[destaque] && (
-              <div className="mb-2.5 p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-between gap-3 text-xs shrink-0 select-none animate-in fade-in slide-in-from-top-1">
+              <div className="p-3 bg-muted/40 border-b flex items-center justify-between gap-3 text-xs shrink-0 select-none animate-in fade-in duration-150">
                 <div className="min-w-0">
-                  <span className="font-black text-amber-600 dark:text-amber-500 uppercase text-[9px] tracking-wider block">Ponto Selecionado</span>
-                  <span className="font-extrabold text-foreground text-sm truncate uppercase">{nomes[destaque] || `PONTO ${destaque + 1}`}</span>
+                  <span className="font-black text-emerald-500 uppercase text-[10px] tracking-wider block">Vértice Selecionado</span>
+                  <span className="font-black text-foreground text-sm truncate uppercase">{nomes[destaque] || `PONTO ${destaque + 1}`}</span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <Button
                     type="button"
                     size="sm"
-                    className={`h-8 font-black uppercase text-[10.5px] tracking-wider cursor-pointer transition-all ${
-                      importar[destaque] && noPoligono[destaque] ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-background hover:bg-muted text-foreground border border-border'
+                    className={`h-8 font-black uppercase text-[11px] tracking-wider cursor-pointer transition-all ${
+                      importar[destaque] && noPoligono[destaque] ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs' : 'bg-background hover:bg-muted text-foreground border'
                     }`}
                     onClick={() => {
                       setImportar(prev => prev.map((v, k) => k === destaque ? true : v));
                       setNoPoligono(prev => prev.map((v, k) => k === destaque ? true : v));
                     }}
                   >
-                    Considerar no Polígono
+                    No Polígono
                   </Button>
                   <Button
                     type="button"
                     size="sm"
-                    className={`h-8 font-black uppercase text-[10.5px] tracking-wider cursor-pointer transition-all ${
-                      importar[destaque] && !noPoligono[destaque] ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-background hover:bg-muted text-foreground border border-border'
+                    className={`h-8 font-black uppercase text-[11px] tracking-wider cursor-pointer transition-all ${
+                      importar[destaque] && !noPoligono[destaque] ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-xs' : 'bg-background hover:bg-muted text-foreground border'
                     }`}
                     onClick={() => {
                       setImportar(prev => prev.map((v, k) => k === destaque ? true : v));
                       setNoPoligono(prev => prev.map((v, k) => k === destaque ? false : v));
                     }}
                   >
-                    Não Considerar (Solto)
+                    Ponto Solto
                   </Button>
                   <Button
                     type="button"
                     size="sm"
-                    className={`h-8 font-black uppercase text-[10.5px] tracking-wider cursor-pointer transition-all ${
-                      !importar[destaque] ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-background hover:bg-muted text-foreground border border-border'
+                    className={`h-8 font-black uppercase text-[11px] tracking-wider cursor-pointer transition-all ${
+                      !importar[destaque] ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs' : 'bg-background hover:bg-muted text-foreground border'
                     }`}
                     onClick={() => {
                       setImportar(prev => prev.map((v, k) => k === destaque ? false : v));
                       setNoPoligono(prev => prev.map((v, k) => k === destaque ? false : v));
                     }}
                   >
-                    Não Importar
+                    Ignorar
                   </Button>
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-[2rem_1fr_17.5rem] items-center gap-2 border-b bg-muted px-3 py-2 text-xs font-bold uppercase text-muted-foreground shrink-0 rounded-t-lg">
-              <span></span>
-              <span>Ponto</span>
+            {/* CABEÇALHO DA TABELA */}
+            <div className="grid grid-cols-[2.2rem_1fr_22rem] items-center gap-2 border-b bg-muted/80 px-3.5 py-2.5 text-xs font-black uppercase tracking-wider text-muted-foreground shrink-0 select-none">
+              <span className="text-center">#</span>
+              <span>Ponto / Vértice</span>
               <span className="text-center">Status / Ação na Importação</span>
             </div>
+
+            {/* CORPO DA TABELA COM ROLAGEM */}
             <div className="min-h-0 flex-1 divide-y overflow-y-auto pr-1 scroll-fino">
               {ordem.filter((i) => i < n && pontos[i]).map((i, pos) => (
                 <div
@@ -292,11 +351,16 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
                   onDragOver={(e) => { e.preventDefault(); moverPara(i); }}
                   onDragEnd={() => setArrastando(null)}
                   onClick={() => setDestaque(i)}
-                  className={`grid cursor-pointer grid-cols-[2rem_1fr_17.5rem] items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted/40 ${destaque === i ? 'bg-amber-400/20' : ''} ${!importar[i] ? 'opacity-55' : ''}`}
+                  className={`grid cursor-pointer grid-cols-[2.2rem_1fr_22rem] items-center gap-2 px-3.5 py-2 text-sm hover:bg-muted/40 transition-colors ${
+                    destaque === i ? 'bg-emerald-500/10 border-l-4 border-l-emerald-500' : ''
+                  } ${!importar[i] ? 'opacity-50 grayscale-50' : ''}`}
                 >
-                  <GripVertical className="size-4 cursor-grab text-muted-foreground shrink-0" />
+                  <div className="flex items-center justify-center gap-1">
+                    <GripVertical className="size-4 cursor-grab text-muted-foreground/60 hover:text-foreground shrink-0" />
+                    <span className="text-[11px] font-black text-muted-foreground/80">{pos + 1}.</span>
+                  </div>
+
                   <span className="flex min-w-0 items-center gap-1.5">
-                    <span className="shrink-0 text-[10px] font-normal text-muted-foreground">{pos + 1}.</span>
                     <input
                       type="text"
                       value={nomes[i] ?? ''}
@@ -313,58 +377,61 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
                         const val = e.target.value.toUpperCase();
                         setNomes((a) => a.map((v, k) => (k === i ? val : v)));
                       }}
-                      className="w-full min-w-0 truncate rounded-sm border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold hover:border-border focus:border-primary focus:bg-background focus:outline-none uppercase"
+                      className="w-full min-w-0 truncate rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm font-black tracking-wide uppercase hover:border-border focus:border-emerald-500 focus:bg-background focus:outline-none transition-all"
                     />
                   </span>
                   
-                  <div className="flex items-center gap-1 justify-center shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {/* SELETOR DE STATUS EM 3 BOTÕES (NUNCA QUEBRA LINHA) */}
+                  <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 shrink-0 w-full" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
-                      className={`h-7 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center gap-1 ${
+                      className={`whitespace-nowrap flex-1 shrink-0 flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-extrabold uppercase tracking-wide rounded-lg transition-all cursor-pointer ${
                         importar[i] && noPoligono[i]
-                          ? 'bg-emerald-600 border-emerald-500 text-white shadow-xs scale-102 font-extrabold'
-                          : 'bg-background hover:bg-emerald-500/10 border-border text-muted-foreground'
+                          ? 'bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-400 font-black'
+                          : 'text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10'
                       }`}
                       onClick={() => {
                         setDestaque(i);
                         setImportar((a) => a.map((v, k) => (k === i ? true : v)));
                         setNoPoligono((a) => a.map((v, k) => (k === i ? true : v)));
                       }}
-                      title="Importar e considerar este ponto no polígono do perímetro"
+                      title="Importar e incluir no perímetro da divisa"
                     >
-                      🟢 Considerar
+                      🟢 No Polígono
                     </button>
+
                     <button
                       type="button"
-                      className={`h-7 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center gap-1 ${
+                      className={`whitespace-nowrap flex-1 shrink-0 flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-extrabold uppercase tracking-wide rounded-lg transition-all cursor-pointer ${
                         importar[i] && !noPoligono[i]
-                          ? 'bg-amber-500 border-amber-400 text-white shadow-xs scale-102 font-extrabold'
-                          : 'bg-background hover:bg-amber-500/10 border-border text-muted-foreground'
+                          ? 'bg-amber-500 text-white shadow-xs ring-1 ring-amber-400 font-black'
+                          : 'text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10'
                       }`}
                       onClick={() => {
                         setDestaque(i);
                         setImportar((a) => a.map((v, k) => (k === i ? true : v)));
                         setNoPoligono((a) => a.map((v, k) => (k === i ? false : v)));
                       }}
-                      title="Importar como ponto solto, sem fazer parte do polígono do perímetro"
+                      title="Importar como ponto solto, fora do perímetro"
                     >
-                      🟡 Não Considerar
+                      🟡 Ponto Solto
                     </button>
+
                     <button
                       type="button"
-                      className={`h-7 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center gap-1 ${
+                      className={`whitespace-nowrap flex-1 shrink-0 flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-extrabold uppercase tracking-wide rounded-lg transition-all cursor-pointer ${
                         !importar[i]
-                          ? 'bg-red-600 border-red-500 text-white shadow-xs scale-102 font-extrabold'
-                          : 'bg-background hover:bg-red-500/10 border-border text-muted-foreground'
+                          ? 'bg-rose-600 text-white shadow-xs ring-1 ring-rose-400 font-black'
+                          : 'text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10'
                       }`}
                       onClick={() => {
                         setDestaque(i);
                         setImportar((a) => a.map((v, k) => (k === i ? false : v)));
                         setNoPoligono((a) => a.map((v, k) => (k === i ? false : v)));
                       }}
-                      title="Ignorar completamente este ponto na importação"
+                      title="Não importar este ponto"
                     >
-                      🔴 Não Importar
+                      🔴 Ignorar
                     </button>
                   </div>
                 </div>
@@ -372,10 +439,17 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
             </div>
           </div>
 
-          {/* DIREITA: satélite */}
-          <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border">
-            <div className="flex items-center gap-1.5 border-b bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground shrink-0"><Satellite className="size-3.5" /> Localização no satélite (fuso {zonaSel}{hemisferio})</div>
-            <div className="min-h-0 flex-1">
+          {/* PAINEL DIREITO: MAPA SATÉLITE */}
+          <div className="lg:col-span-5 flex flex-col min-h-0 rounded-xl border bg-card/60 shadow-xs overflow-hidden">
+            <div className="flex items-center justify-between border-b bg-muted/80 px-3.5 py-2.5 text-xs font-extrabold text-muted-foreground shrink-0 select-none">
+              <span className="flex items-center gap-2">
+                <Satellite className="size-4 text-emerald-500" />
+                Localização no Satélite (Fuso {zonaSel}{hemisferio})
+              </span>
+              <span className="text-[11px] font-bold text-muted-foreground">{poligono.length} pontos no perímetro</span>
+            </div>
+
+            <div className="min-h-0 flex-1 relative">
               <ErrorBoundary
                 key={satRetryKey}
                 onError={() => {
@@ -385,12 +459,16 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
                   }
                 }}
                 fallback={
-                  <div className="flex h-full flex-col items-center justify-center gap-1.5 p-4 text-center text-sm text-muted-foreground">
-                    <Satellite className="size-6 opacity-50" />
-                    <span>Não deu para abrir o satélite agora.</span>
-                    <span className="text-xs">A lista de pontos ao lado funciona normalmente — pode importar mesmo assim.</span>
-                    <button type="button" className="mt-1 rounded-sm border px-3 py-1 text-xs font-semibold hover:bg-muted" onClick={() => setSatRetryKey((k) => k + 1)}>
-                      Tentar de novo
+                  <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground">
+                    <Satellite className="size-8 opacity-40 text-emerald-500" />
+                    <span className="font-extrabold text-foreground">Visualização do satélite indisponível no momento.</span>
+                    <span className="text-xs">A lista de vértices ao lado continua ativa. Você pode concluir a importação normalmente.</span>
+                    <button
+                      type="button"
+                      className="mt-2 rounded-xl border bg-background px-4 py-2 text-xs font-black uppercase tracking-wider hover:bg-muted shadow-2xs transition-all"
+                      onClick={() => setSatRetryKey((k) => k + 1)}
+                    >
+                      Tentar Novamente
                     </button>
                   </div>
                 }
@@ -401,14 +479,28 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
           </div>
         </div>
 
-        <footer className="flex flex-col items-center justify-between gap-3 border-t pt-3 sm:flex-row">
-          <span className="text-[10px] text-muted-foreground">ESC para cancelar</span>
-          <div className="flex w-full items-stretch gap-2 sm:w-auto sm:items-center">
-            <Button type="button" variant="outline" className="font-semibold" onClick={() => { onConfirm(false, zonaSel, { ordem, importar, noPoligono, nomes }, tituloServico); onOpenChange(false); }}>
-              Importar só vértices (sem perímetro)
+        {/* RODAPÉ E BOTÕES DE AÇÃO */}
+        <footer className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t pt-3 mt-2 shrink-0">
+          <span className="text-xs font-semibold text-muted-foreground">Pressione <kbd className="px-1.5 py-0.5 rounded-md border bg-muted text-[10px] font-mono font-bold">ESC</kbd> para cancelar</span>
+          
+          <div className="flex w-full sm:w-auto items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 px-4 font-extrabold text-xs uppercase tracking-wider gap-2 rounded-xl border shadow-2xs hover:bg-muted transition-all"
+              onClick={() => { onConfirm(false, zonaSel, { ordem, importar, noPoligono, nomes }, tituloServico); onOpenChange(false); }}
+            >
+              <MapPin className="size-4 text-amber-500" />
+              Importar Só Vértices (Sem Perímetro)
             </Button>
-            <Button type="button" className="gap-1.5 bg-emerald-600 font-bold text-white hover:bg-emerald-700" onClick={() => { onConfirm(true, zonaSel, { ordem, importar, noPoligono, nomes }, tituloServico); onOpenChange(false); }}>
-              <Check className="size-4" /> Gerar perímetro automático
+
+            <Button
+              type="button"
+              className="h-10 px-5 font-black text-xs uppercase tracking-wider gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-950/20 transition-all cursor-pointer"
+              onClick={() => { onConfirm(true, zonaSel, { ordem, importar, noPoligono, nomes }, tituloServico); onOpenChange(false); }}
+            >
+              <Sparkles className="size-4" />
+              Gerar Perímetro Automático
             </Button>
           </div>
         </footer>
