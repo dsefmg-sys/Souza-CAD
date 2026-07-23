@@ -11,7 +11,7 @@ import {
   Moon, Sun, Pencil, PenTool, Lock, LockOpen, Printer, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
   Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain, LayoutGrid, Building2, Coins,
-  User, MapPin, Calendar, Sprout, Share2, Play, Home, Layers, Landmark, BookOpen, FileSpreadsheet,
+  User, MapPin, Calendar, Sprout, Share2, Play, Home, Layers, Landmark, BookOpen, FileSpreadsheet, Calculator,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';

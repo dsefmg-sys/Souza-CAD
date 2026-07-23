@@ -12,6 +12,7 @@ interface Props {
   onOpenChange: (o: boolean) => void;
   zona: number;
   hemisferio: 'N' | 'S';
+  onMinimizar?: () => void;
 }
 
 type Aba = 'converter' | 'distancia' | 'lote' | 'areas' | 'rampa';
@@ -29,7 +30,7 @@ function num(v: string): number {
   return Number(String(v).replace(',', '.').trim());
 }
 
-export default function CalculadoraModal({ open, onOpenChange, zona, hemisferio }: Props) {
+export default function CalculadoraModal({ open, onOpenChange, zona, hemisferio, onMinimizar }: Props) {
   const [aba, setAba] = useState<Aba>('converter');
   const [zonaSel, setZonaSel] = useState(String(zona));
   const [hemi, setHemi] = useState<'N' | 'S'>(hemisferio);
@@ -171,7 +172,7 @@ export default function CalculadoraModal({ open, onOpenChange, zona, hemisferio 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[88vh] flex flex-col bg-background shadow-2xl p-5 rounded-2xl border border-border overflow-hidden">
+      <DialogContent onMinimize={onMinimizar} className="max-w-3xl max-h-[88vh] flex flex-col bg-background shadow-2xl p-5 rounded-2xl border border-border overflow-hidden">
         <DialogHeader className="border-b border-border/60 pb-3 shrink-0">
           <DialogTitle className="flex items-center gap-2.5 text-base font-black text-foreground">
             <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500">

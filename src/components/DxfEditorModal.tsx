@@ -22,7 +22,7 @@ const VW = 1100, VH = 720, PAD = 30;
 
 type Modo = 'sel' | 'linha' | 'texto' | 'poly' | 'ret' | 'circ' | 'arco';
 
-export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export default function DxfEditorModal({ open, onOpenChange, onMinimizar }: { open: boolean; onOpenChange: (o: boolean) => void; onMinimizar?: () => void }) {
   const [ents, setEnts] = useState<Ent[]>([]);
   const [nome, setNome] = useState('desenho.dxf');
   const [sel, setSel] = useState<number | null>(null);

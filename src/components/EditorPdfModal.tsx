@@ -18,6 +18,7 @@ interface Props {
   aberto: boolean;
   onFechar: () => void;
   onExtrairComIA?: (file: File) => void;
+  onMinimizar?: () => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -28,7 +29,7 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-export default function EditorPdfModal({ aberto, onFechar, onExtrairComIA }: Props) {
+export default function EditorPdfModal({ aberto, onFechar, onExtrairComIA, onMinimizar }: Props) {
   const [aba, setAba] = useState<'comprimir' | 'organizar' | 'unir' | 'extrair'>('comprimir');
   const [progressoMsg, setProgressoMsg] = useState('');
   const [processando, setProcessando] = useState(false);

@@ -23,6 +23,7 @@ interface Props {
   onBaixar: (linhasEditadas?: LinhaConferencia[]) => void;
   imoveisCadastrados?: ImovelCad[];
   onAplicarCorrecoes?: (verticesAtualizados: ResultadoCalculo['vertices']) => void;
+  onMinimizar?: () => void;
 }
 
 export default function PlanilhaConferenciaModal({

@@ -518,59 +518,80 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
       if (prev.includes(valor)) {
         if (prev.length === 1) return prev; // Não permite desmarcar o único ato restante
         return prev.filter((a) => a !== valor);
+      } else {
+        return [...prev, valor];
       }
-      return [...prev, valor];
     });
   }
 
-  function handleAddParteAdicional(papel: 'requerente' | 'transmitente') {
-    setLocalPartesAdicionais((prev) => [...prev, { ...PESSOA_VAZIA, papel }]);
+  function addParte(papel: 'requerente' | 'transmitente' = 'requerente', pre?: Partial<PessoaQualificada>) {
+    setLocalPartesAdicionais((ps) => [...ps, { ...PESSOA_VAZIA, papel, ...pre }]);
   }
+  function setParte(i: number, p: PessoaQualificada) { setLocalPartesAdicionais((ps) => ps.map((x, k) => (k === i ? p : x))); }
+  function rmParte(i: number) { setLocalPartesAdicionais((ps) => ps.filter((_, k) => k !== i)); }
 
-  function handleUpdateParteAdicional(index: number, campo: keyof PessoaQualificada, valor: string) {
-    setLocalPartesAdicionais((prev) => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], [campo]: valor };
-      return copy;
-    });
-  }
+  const rotulos = {
+    venda: { req: 'Requerente (adquirente / comprador principal)', trans: 'Proprietário registral (transmitente / vendedor principal)' },
+    doacao: { req: 'Requerente (donatário principal)', trans: 'Doador (proprietário registral principal)' },
+    unificacao: { req: 'Requerente (proprietário principal)', trans: 'Coproprietário / cônjuge (se houver)' },
+    desmembramento: { req: 'Requerente (proprietário principal)', trans: 'Coproprietário / cônjuge (se houver)' },
+    usucapiao: { req: 'Requerente (usucapiente principal)', trans: 'Titular registral / confrontante (se houver)' },
+    retificacao: { req: 'Requerente (proprietário / possuidor principal)', trans: 'Cônjuge / Coproprietário (se houver - opcional)' },
+  }[localTipoAto] ?? { req: 'Requerente', trans: 'Coproprietário (se houver)' };
 
-  function handleRemoveParteAdicional(index: number) {
-    setLocalPartesAdicionais((prev) => prev.filter((_, i) => i !== index));
-  }
+  useEffect(() => {
+    if (open) {
+      setReq(requerente ?? PESSOA_VAZIA);
+      setTrans(transmitente ?? transVazio(imovel));
+      const iniciaisAtos = (tiposAtos && tiposAtos.length > 0) ? tiposAtos : [tipoAto || 'retificacao'];
+      setLocalTiposAtos(iniciaisAtos);
+      
+      let iniciais = partesAdicionais ?? [];
+      if (iniciais.length === 0 && imovel.proprietariosAdicionais && imovel.proprietariosAdicionais.length > 0) {
+        iniciais = imovel.proprietariosAdicionais.map((p) => ({
+          ...PESSOA_VAZIA,
+          nome: p.nome,
+          cpf: p.cpf,
+          conjugeNome: p.conjugeNome || '',
+          conjugeCpf: p.conjugeCpf || '',
+          papel: (localTipoAto === 'venda' ? 'requerente' : 'transmitente') as 'requerente' | 'transmitente'
+        }));
+      }
+      setLocalPartesAdicionais(iniciais);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
-  async function salvarDadosLocalEServer(fechar = false) {
-    const atualizadosReq = req;
-    const atualizadosTrans = trans;
-    const atualizadosPartes = localPartesAdicionais;
-    const atualizadosTipo = localTipoAto;
-    const atualizadosTiposAtos = localTiposAtos;
-
-    onChangePessoas(atualizadosReq, atualizadosTrans, atualizadosTipo, atualizadosPartes, atualizadosTiposAtos);
-    
-    if (onSalvarProjeto) {
-      await onSalvarProjeto({
-        requerente: atualizadosReq,
-        transmitente: atualizadosTrans,
-        tipoAto: atualizadosTipo,
-        partesAdicionais: atualizadosPartes,
+  async function salvarDadosLocalEServer(fechar = true) {
+    setMsg('Salvando dados no projeto...');
+    try {
+      onChangePessoas(req, trans, localTipoAto, localPartesAdicionais, localTiposAtos);
+      if (onSalvarProjeto) {
+        await onSalvarProjeto({
+          requerente: req,
+          transmitente: trans,
+          tipoAto: localTipoAto,
+          partesAdicionais: localPartesAdicionais
+        });
+      }
+      setMsg('Dados salvos com sucesso!');
+      if (fechar) {
+        onOpenChange(false);
+      }
+    } catch (e) {
+      setMsg('Erro ao salvar.');
+      await avisar({
+        titulo: 'Erro ao Salvar',
+        mensagem: 'Não foi possível salvar os dados no banco de dados do projeto: ' + ((e as Error).message || 'erro')
       });
     }
-
-    if (fechar) {
-      onOpenChange(false);
-    }
   }
 
-  const reqRef = requerente ?? PESSOA_VAZIA;
-  const transRef = transmitente ?? transVazio(imovel);
-  const partesRef = partesAdicionais ?? [];
-  const atosRef = tiposAtos ?? [tipoAto || 'retificacao'];
-
   async function handleCloseRequest() {
-    const mudouReq = JSON.stringify(req) !== JSON.stringify(reqRef);
-    const mudouTrans = JSON.stringify(trans) !== JSON.stringify(transRef);
-    const mudouPartes = JSON.stringify(localPartesAdicionais) !== JSON.stringify(partesRef);
+    const mudouReq = JSON.stringify(req) !== JSON.stringify(requerente ?? PESSOA_VAZIA);
+    const mudouTrans = JSON.stringify(trans) !== JSON.stringify(transmitente ?? transVazio(imovel));
+    const mudouPartes = JSON.stringify(localPartesAdicionais) !== JSON.stringify(partesAdicionais ?? []);
+    const atosRef = (tiposAtos && tiposAtos.length > 0) ? tiposAtos : [tipoAto || 'retificacao'];
     const mudouTipo = JSON.stringify(localTiposAtos) !== JSON.stringify(atosRef);
 
     if (mudouReq || mudouTrans || mudouPartes || mudouTipo) {
@@ -612,42 +633,48 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     const resultado = await perguntarTratamentoAusentes(campos, (config) => escolher(config as any) as any);
     if (resultado === 'cancelar') return;
 
+    const modoTratamentoAusente = resultado;
+    const permitirIncompleto = modoTratamentoAusente === 'dado_ausente';
+
     onChangePessoas(req, trans, localTipoAto, localPartesAdicionais, localTiposAtos);
+    const padroes = carregarPadroes();
+    const comarca = obterComarca(imovel, padroes.comarcaPadrao);
     try {
-      const padroes = carregarPadroes();
-      const prefs = carregarPreferencias();
-      const areaUsar = imovel.usarValoresSigef && imovel.areaSigefHa ? imovel.areaSigefHa : areaRealHa;
-      const comarcaFormatada = imovel.comarca || obterComarca(imovel.municipio || '') || imovel.municipio || '';
+      let blobBruto: Blob | null = null;
+      try {
+        const response = await fetch('/api/export/requerimento', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imovel, tecnico, requerente: req, transmitente: trans, areaRealHa,
+            dataExtenso: dataExtensoHoje(), tipoAto: localTipoAto, tiposAtos: localTiposAtos,
+            partesAdicionais: localPartesAdicionais, comarca, correcoes: correcoes || [],
+            permitirIncompleto, modoTratamentoAusente
+          })
+        });
+        if (response.ok) blobBruto = await response.blob();
+      } catch { /* fallback local */ }
 
-      const bytes = await gerarRequerimentoDocx({
-        imovel: { ...imovel, comarca: comarcaFormatada, areaAnterior: imovel.areaAnterior },
-        tecnico,
-        areaRealHa: areaUsar,
-        requerente: req,
-        transmitente: trans,
-        tipoAto: localTipoAto,
-        tiposAtos: localTiposAtos,
-        partesAdicionais: localPartesAdicionais,
-        sugestoesProprietarios: sugProp,
-        correcoesErrata: correcoes,
-        glebasSelecionadas: glebas && glebas.length > 0 ? glebas.filter((g) => glebasSelecionadas.has(g.id)) : undefined,
-        omitirLacunas: resultado === 'espacos_em_branco',
-      }, {
-        exibirRoteiroPerimetrico: prefs.exibirRoteiroPerimetricoRequerimento,
-        exibirQuadroCoordenadas: prefs.exibirQuadroCoordenadasRequerimento,
-        estiloTabelasDocx: padroes.estiloTabelasDocx,
-      });
+      if (!blobBruto) {
+        blobBruto = await gerarRequerimentoDocx({
+          imovel, tecnico: tecnico!, requerente: req, transmitente: trans, areaRealHa,
+          dataExtenso: dataExtensoHoje(), tipoAto: localTipoAto, tiposAtos: localTiposAtos,
+          partesAdicionais: localPartesAdicionais, comarca, correcoes: correcoes || [],
+          permitirIncompleto, modoTratamentoAusente
+        });
+      }
 
-      const docFinal = await compatibilizarWord2007(bytes);
-      const blob = new Blob([docFinal], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-      const nomeSanitizado = (imovel.denominacao || 'Imovel').replace(/[^a-zA-Z0-9_-]/g, '_');
-      saveAs(blob, `Requerimento_Cartorio_${nomeSanitizado}.docx`);
-
-      if (onBaixar) onBaixar();
-    } catch (err: any) {
-      await avisar({ titulo: 'Erro ao gerar documento', mensagem: err?.message || 'Falha ao processar o arquivo Word.' });
+      const requerimento = await compatibilizarWord2007(blobBruto);
+      const nome = (imovel.denominacao || 'imovel').replace(/[^\w.-]+/g, '_');
+      saveAs(requerimento, `Requerimento - ${nome}.docx`);
+      onBaixar?.();
+      setMsg(permitirIncompleto ? 'Requerimento gerado (incompleto).' : 'Requerimento gerado.');
+    } catch (e: unknown) {
+      console.error(e);
+      setMsg((e as Error).message || 'Erro ao gerar requerimento.');
     }
   }
+
 
   const areaAnt = imovel.areaAnterior ?? 0;
   const temAreaAnt = imovel.areaAnterior != null && imovel.areaAnterior > 0;

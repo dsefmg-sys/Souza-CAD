@@ -13,7 +13,7 @@ import { auth } from '@/lib/firebase/client';
 // Esta é a CASCA VISUAL (modal, botões, DOM); os tipos e as funções de camada/alinhamento puras
 // vivem em lib/canvas/canvasEngine.ts (zero dependência de React/UI — copiável para outro app).
 
-export default function EstudioModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export default function EstudioModal({ open, onOpenChange, onMinimizar }: { open: boolean; onOpenChange: (o: boolean) => void; onMinimizar?: () => void }) {
   const [fmt, setFmt] = useState({ w: 1080, h: 1080 });
   const [bg, setBg] = useState('#ffffff');
   const [els, setEls] = useState<El[]>([]);
