@@ -1,10 +1,11 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-import { Scale, Download, Users } from 'lucide-react';
+import { Scale, Download, Play, BookOpen, FileCheck, ShieldCheck } from 'lucide-react';
 import { ImovelData, EscritorioData, TecnicoData } from '@/lib/topo/types';
 import { confirmar } from '@/lib/ui/dialogos';
 import { gerarPdfPeticaoUsucapiao, gerarPdfNotificacaoExtrajudicial } from '@/lib/export/juridico';
@@ -17,7 +18,7 @@ interface Props {
   tecnico: TecnicoData;
   esc: EscritorioData | null;
   onSalvarProjeto: () => void;
-  confrontantesList?: string[]; // List of confrontantes names to populate notif selector
+  confrontantesList?: string[];
 }
 
 export default function JuridicoModal({
@@ -53,7 +54,7 @@ export default function JuridicoModal({
   };
 
   const obterDefaultDireito = () => {
-    return `A pretensão do Requerente encontra amparo legal no artigo 1.238 do Código Civil Brasileiro, que estabelece a aquisição da propriedade imóvel por aquele que exercer posse mansa e pacífica pelo prazo de 15 anos, independentemente de justo título e boa-fé. Resta preenchido todo o arcabouço probatório-técnico com as peças geodésicas anexas.`;
+    return `A pretensão do Requerente encontra amparo legal no artigo 1.238 do Código Civil Brasileiro e artigo 216-A da Lei de Registros Públicos (Lei 6.015/73), que estabelecem a aquisição da propriedade imóvel por aquele que exercer posse mansa e pacífica pelo prazo legal, instruindo a peça com as divisas apuradas no levantamento geodésico de precisão.`;
   };
 
   const restaurarTextoPadrao = () => {
@@ -66,7 +67,7 @@ export default function JuridicoModal({
   useEffect(() => {
     if (open) {
       const d = imovel.dadosJuridico || {};
-      setForoComarca(d.foroComarca || '');
+      setForoComarca(d.foroComarca || imovel.municipio || '');
       setAdvogadoNome(d.advogadoNome || (tecnico?.oab ? tecnico.nome : ''));
       setAdvogadoOab(d.advogadoOab || tecnico?.oab || '');
       setQualificacaoFatos(d.qualificacaoFatos || obterDefaultFatos());
@@ -84,76 +85,55 @@ export default function JuridicoModal({
     notificacaoConfrontanteId: confrontanteNome
   });
 
-  const verificarModificado = () => {
-    const atual = obterDadosAtuais();
-    const salvo = imovel.dadosJuridico || {};
-    return JSON.stringify(atual) !== JSON.stringify({
-      foroComarca: salvo.foroComarca || '',
-      advogadoNome: salvo.advogadoNome || '',
-      advogadoOab: salvo.advogadoOab || '',
-      qualificacaoFatos: salvo.qualificacaoFatos || '',
-      direitoFundamento: salvo.direitoFundamento || '',
-      notificacaoConfrontanteId: salvo.notificacaoConfrontanteId || ''
-    });
-  };
-
   const salvarLocal = () => {
     onChangeImovel({
       ...imovel,
       dadosJuridico: obterDadosAtuais()
     });
-    setMsg('Rascunho Jurídico salvo!');
+    setMsg('Dados Jurídicos salvos!');
     setTimeout(() => setMsg(''), 3000);
   };
 
   const fecharComVerificacao = async () => {
-    if (verificarModificado()) {
-      const fecharSemSalvar = await confirmar({
-        titulo: 'Alterações jurídicas pendentes',
-        mensagem: 'Você fez alterações nos dados jurídicos. Deseja fechar e descartar as alterações?',
-        okLabel: 'Descartar e Fechar',
-        perigo: true
-      });
-      if (!fecharSemSalvar) return;
-    }
     onOpenChange(false);
   };
 
-  const baixarPeticao = () => {
-    const doc = gerarPdfPeticaoUsucapiao(imovel, esc, tecnico, {
-      foroComarca,
-      advogadoNome,
-      advogadoOab,
-      qualificacaoFatos,
-      direitoFundamento
-    });
+  // Presets de Preenchimento Rápido
+  const carregarPeticaoUsucapiao = () => {
+    setForoComarca(imovel.municipio ? `Juízo de Direito da Comarca de ${imovel.municipio}` : 'Juízo de Direito da Comarca de Registros Públicos');
+    setQualificacaoFatos(obterDefaultFatos());
+    setDireitoFundamento(obterDefaultDireito());
+    setMsg('Cenário Ação de Usucapião carregado!');
+    setTimeout(() => setMsg(''), 3000);
+  };
+
+  const carregarRetificacaoArea = () => {
+    setForoComarca(imovel.municipio ? `Ofício de Registro de Imóveis da Comarca de ${imovel.municipio}` : 'Ofício de Registro de Imóveis');
+    setQualificacaoFatos(`O Requerente é proprietário do imóvel registrado na Matrícula nº ${imovel.matricula || '___'}, onde constatou-se divergência entre a área constante no registro tabular e a área real apurada pelo levantamento topográfico georreferenciado realizado com precisão centimétrica conforme normas do INCRA/SIGEF.`);
+    setDireitoFundamento(`O pedido fundamenta-se no artigo 213, inciso II, da Lei de Registros Públicos (Lei nº 6.015/1973), que autoriza a retificação intra-muros do registro imobiliário quando os confrontantes forem notificados ou manifestarem anuência expressa.`);
+    setMsg('Cenário Retificação de Área (Lei 6.015/73 Art. 213) carregado!');
+    setTimeout(() => setMsg(''), 3000);
+  };
+
+  const baixarPeticaoPdf = () => {
+    const doc = gerarPdfPeticaoUsucapiao(imovel, esc, tecnico, obterDadosAtuais());
     doc.save(`${imovel.denominacao || 'imovel'}_peticao_usucapiao.pdf`);
   };
 
-  const baixarParecerDocx = async () => {
+  const baixarPeticaoDocx = async () => {
     const { gerarDocxParecerJuridico } = await import('@/lib/export/juridico');
     const { saveAs } = await import('file-saver');
-    const blob = await gerarDocxParecerJuridico(imovel, esc, tecnico, {
-      foroComarca,
-      advogadoNome,
-      advogadoOab,
-      qualificacaoFatos,
-      direitoFundamento
-    });
+    const blob = await gerarDocxParecerJuridico(imovel, esc, tecnico, obterDadosAtuais());
     saveAs(blob, `${imovel.denominacao || 'imovel'}_parecer_juridico.docx`);
   };
 
-  const baixarNotificacao = () => {
+  const baixarNotificacaoPdf = () => {
     const doc = gerarPdfNotificacaoExtrajudicial(imovel, esc, tecnico, {
-      foroComarca,
-      advogadoNome,
-      advogadoOab,
-      qualificacaoFatos,
-      direitoFundamento,
-      confrontanteNome,
+      ...obterDadosAtuais(),
+      confrontanteNome: confrontanteNome || 'Confrontante',
       confrontanteQualificacao
     });
-    doc.save(`${imovel.denominacao || 'imovel'}_notificacao_${confrontanteNome || 'vizinho'}.pdf`);
+    doc.save(`${imovel.denominacao || 'imovel'}_notificacao_extrajudicial.pdf`);
   };
 
   return (
@@ -161,145 +141,148 @@ export default function JuridicoModal({
       <DialogContent className="w-[96vw] sm:w-[92vw] max-w-[800px] max-h-[92vh] flex flex-col p-4 sm:p-6 overflow-hidden shadow-2xl" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className="shrink-0 flex flex-row items-center justify-between border-b pb-3">
           <DialogTitle className="flex items-center gap-2 text-base font-extrabold uppercase tracking-wide text-foreground">
-            <Scale className="size-5 text-indigo-500 shrink-0" /> Módulo Jurídico &amp; Regularização
+            <Scale className="size-5 text-indigo-500 shrink-0" /> Módulo Jurídico &amp; Petições Cartorárias
           </DialogTitle>
           <div className="flex items-center gap-2">
-            {msg && <span className="text-xs font-bold text-emerald-500 animate-pulse">{msg}</span>}
-            <Button size="sm" variant="outline" className="text-xs font-bold" onClick={salvarLocal}>
-              Salvar Rascunho
+            {msg && <span className="text-xs font-bold text-indigo-500 animate-pulse">{msg}</span>}
+            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs" onClick={salvarLocal}>
+              Salvar Dados
             </Button>
           </div>
         </DialogHeader>
 
-        {/* Tab Selector */}
-        <div className="flex gap-1 border-b my-2 bg-muted/20 p-1 rounded-lg shrink-0">
-          {(['peticao', 'notificacao'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setAba(t)}
-              className={`flex-1 text-center py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
-                aba === t
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-muted-foreground hover:bg-muted'
-              }`}
-            >
-              {t === 'peticao' ? 'Petição Inicial Usucapião' : 'Notificação Extrajudicial'}
-            </button>
-          ))}
+        {/* Tab Buttons */}
+        <div className="flex border-b text-xs font-bold shrink-0">
+          <button
+            onClick={() => setAba('peticao')}
+            className={`py-2 px-4 transition-all ${aba === 'peticao' ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-extrabold' : 'text-muted-foreground'}`}
+          >
+            1. Petição de Usucapião / Retificação
+          </button>
+          <button
+            onClick={() => setAba('notificacao')}
+            className={`py-2 px-4 transition-all ${aba === 'notificacao' ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-extrabold' : 'text-muted-foreground'}`}
+          >
+            2. Notificação Extrajudicial de Confrontante
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-1 py-2 text-xs sm:text-sm">
-          {/* Advogado Info (Shared by both) */}
-          <div className="p-3 bg-muted/20 border rounded-lg space-y-3">
-            <span className="text-[10px] font-extrabold uppercase text-muted-foreground">Credenciais do Patrono / Advogado</span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs font-bold">Nome do Advogado(a)</Label>
-                <Input
-                  placeholder="Ex: Dra. Mariana Alencar"
-                  value={advogadoNome}
-                  onChange={(e) => setAdvogadoNome(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-bold">OAB (Número/UF)</Label>
-                <Input
-                  placeholder="Ex: 123.456/MG"
-                  value={advogadoOab}
-                  onChange={(e) => setAdvogadoOab(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-bold">Foro / Comarca Judicial</Label>
-                <Input
-                  placeholder="Ex: Espera Feliz-MG"
-                  value={foroComarca}
-                  onChange={(e) => setForoComarca(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
           {aba === 'peticao' && (
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Fundamentação Jurídica (Artigo / Tese)</Label>
-                <textarea className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-                  rows={3}
-                  placeholder="Ex: Art. 1.238 do Código Civil (Usucapião Extraordinária com posse mansa por mais de 15 anos)..."
-                  value={direitoFundamento}
-                  onChange={(e) => setDireitoFundamento(e.target.value)}
-                />
+              {/* Presets */}
+              <div className="space-y-1.5 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30">
+                <span className="text-xs font-extrabold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide flex items-center gap-1.5">
+                  <Play className="size-3.5" /> Preenchimento Rápido da Peça Jurídica:
+                </span>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={carregarPeticaoUsucapiao}
+                    className="px-2.5 py-1.5 rounded-md bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition-all"
+                  >
+                    Ação de Usucapião (Art. 1.238 CC / Provimento 65 CNJ)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={carregarRetificacaoArea}
+                    className="px-2.5 py-1.5 rounded-md bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-all"
+                  >
+                    Retificação de Área (Lei 6.015/73 Art. 213)
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label className="text-xs font-bold">Foro / Comarca / Cartório de Registro</Label>
+                  <Input
+                    placeholder="Ex: Juízo de Direito da Comarca de Patos de Minas - MG"
+                    value={foroComarca}
+                    onChange={(e) => setForoComarca(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold">Inscrição OAB do Advogado / RT</Label>
+                  <Input
+                    placeholder="Ex: OAB/MG 123.456"
+                    value={advogadoOab}
+                    onChange={(e) => setAdvogadoOab(e.target.value)}
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Fatos Adicionais e Qualificação das Benfeitorias</Label>
-                <textarea className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs font-bold">Dos Fatos e da Posse / Histórico Imobiliário</Label>
+                  <button type="button" onClick={restaurarTextoPadrao} className="text-[11px] text-indigo-500 hover:underline font-bold">
+                    Restaurar Texto Padrão
+                  </button>
+                </div>
+                <textarea
+                  className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
                   rows={4}
-                  placeholder="Descreva a cadeia de posse anterior, como o posseiro explora a terra e outros argumentos fáticos do direito de propriedade..."
                   value={qualificacaoFatos}
                   onChange={(e) => setQualificacaoFatos(e.target.value)}
                 />
               </div>
 
-              <div className="pt-2 border-t flex flex-wrap gap-2 justify-end items-center">
-                <Button type="button" className="bg-slate-600 hover:bg-slate-700 text-white font-bold text-xs mr-auto" onClick={restaurarTextoPadrao}>
-                  Restaurar Texto Padrão
-                </Button>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5" onClick={baixarParecerDocx}>
-                  <Download className="size-4" /> Parecer Jurídico (Word)
-                </Button>
-                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5 text-xs" onClick={baixarPeticao}>
-                  <Download className="size-4" /> Petição Inicial (PDF)
-                </Button>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Do Direito e Fundamentação Jurídica</Label>
+                <textarea
+                  className="flex min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                  rows={3}
+                  value={direitoFundamento}
+                  onChange={(e) => setDireitoFundamento(e.target.value)}
+                />
               </div>
             </div>
           )}
 
           {aba === 'notificacao' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold">Selecionar Confrontante para Notificar</Label>
-                  <select
-                    value={confrontanteNome}
-                    onChange={(e) => setConfrontanteNome(e.target.value)}
-                    className="w-full bg-background border border-input h-9 px-3 rounded-md text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">-- Selecione ou digite abaixo --</option>
-                    {confrontantesList.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold">Nome do Notificado (Digitar Manual se necessário)</Label>
-                  <Input
-                    placeholder="Ex: Antônio Rodrigues de Souza"
-                    value={confrontanteNome}
-                    onChange={(e) => setConfrontanteNome(e.target.value)}
-                  />
-                </div>
+              <div className="p-3 border rounded-xl bg-amber-500/10 border-amber-500/30 text-xs text-amber-800 dark:text-amber-300">
+                <strong>Notificação de Anotação de Limite Perimétrico:</strong> Notificação extrajudicial enviada ao confrontante para formalização da ciência e anuência das divisas apuradas no levantamento geodésico.
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Qualificação / Descrição do Confrontante Notificado</Label>
+                <Label className="text-xs font-bold">Nome do Confrontante a Notificar</Label>
                 <Input
-                  placeholder="Ex: Proprietário do lote vizinho matriculado sob nº 4.567"
+                  placeholder="Ex: João da Silva / Confrontante Leste"
+                  value={confrontanteNome}
+                  onChange={(e) => setConfrontanteNome(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Qualificação Completa e Endereço do Notificado</Label>
+                <textarea
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                  rows={3}
+                  placeholder="Ex: brasileiro, casado, produtor rural, inscrito no CPF nº 000.000.000-00, residente no imóvel lindeiro..."
                   value={confrontanteQualificacao}
                   onChange={(e) => setConfrontanteQualificacao(e.target.value)}
                 />
               </div>
-
-              <div className="pt-2 border-t flex justify-end">
-                <Button className="bg-red-600 hover:bg-red-700 text-white font-bold gap-1.5" onClick={baixarNotificacao}>
-                  <Download className="size-4" /> Gerar Notificação Extrajudicial (PDF)
-                </Button>
-              </div>
             </div>
+          )}
+        </div>
+
+        {/* BOTOES COM CORES SOLIDADAS DE ALTO CONTRASTE */}
+        <div className="pt-3 border-t flex flex-wrap gap-2 justify-end shrink-0 bg-card">
+          {aba === 'peticao' ? (
+            <>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 shrink-0" onClick={baixarPeticaoDocx}>
+                <Download className="size-4" /> Parecer Jurídico (Word)
+              </Button>
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs gap-1.5 shrink-0" onClick={baixarPeticaoPdf}>
+                <Download className="size-4" /> Petição de Usucapião (PDF)
+              </Button>
+            </>
+          ) : (
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs gap-1.5 shrink-0" onClick={baixarNotificacaoPdf}>
+              <Download className="size-4" /> Notificação Extrajudicial (PDF)
+            </Button>
           )}
         </div>
       </DialogContent>
