@@ -168,3 +168,188 @@ export function gerarPdfAtaPosse(
 
   return doc;
 }
+
+/** Gerador de Documento Word (.docx) do Laudo Técnico de Usucapião */
+export async function gerarDocxLaudoUsucapiao(
+  imovel: ImovelData,
+  esc: EscritorioData | null,
+  tecnico: TecnicoData,
+  dados: DadosUsucapiao
+): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = await import('docx');
+  
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: 'LAUDO TÉCNICO DE USUCAPIÃO EXTRAJUDICIAL', bold: true, size: 28, color: '2E37A4' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '1. DADOS E HISTÓRICO DA POSSE', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Modalidade de Usucapião: `, bold: true }),
+            new TextRun({ text: dados.tipoUsucapiao || 'Usucapião Extrajudicial Ordinária' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Tempo de Posse Declarado: `, bold: true }),
+            new TextRun({ text: dados.tempoPosse || '15 anos' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Origem da Posse: `, bold: true }),
+            new TextRun({ text: dados.origemPosse || 'Cessão de Direitos Possessórios / Ocupação Mansa' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Anuência dos Confrontantes: `, bold: true }),
+            new TextRun({ text: dados.anuenteVizinhos ? 'Sim, vizinhos assinaram termos de divisa' : 'Pendente de coleta' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '2. DESCRIÇÃO FÍSICA E PERIMÉTRICA DO IMÓVEL', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Denominação do Imóvel: `, bold: true }),
+            new TextRun({ text: imovel.denominacao || 'Área de Posse' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Área Georreferenciada: `, bold: true }),
+            new TextRun({ text: `${imovel.areaHa ? imovel.areaHa.toFixed(4) : '0.0000'} ha (${imovel.areaM2 ? imovel.areaM2.toFixed(2) : '0.00'} m²)` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Município / UF: `, bold: true }),
+            new TextRun({ text: `${imovel.municipio || 'Não cadastrado'}-${imovel.uf || ''}` }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '3. DIAGNÓSTICO TÉCNICO E CONFRONTAÇÕES', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: dados.detalhesPosse || 'O imóvel possui limites perfeitamente definidos por cercas consolidadas há mais de uma década. O levantamento topográfico planialtimétrico cadastrou os marcos divisórios sem qualquer sobreposição de áreas com imóveis limítrofes certificados no SIGEF/INCRA, atestando a posse mansa, pacífica e sem contestação de terceiros.'
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: '____________________________________________________' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: tecnico.nome || 'Nome do Profissional', bold: true }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `${tecnico.conselho || 'CREA'}: ${tecnico.cft || ''} / Responsável Técnico` }),
+          ],
+        }),
+      ],
+    }],
+  });
+
+  return await Packer.toBlob(doc);
+}
+
+/** Gerador de Documento Word (.docx) da Ata de Declaração de Posse */
+export async function gerarDocxAtaPosse(
+  imovel: ImovelData,
+  esc: EscritorioData | null,
+  tecnico: TecnicoData,
+  dados: DadosUsucapiao
+): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = await import('docx');
+  const proprietario = (imovel.proprietario || 'Nome do Requerente/Possuidor').toUpperCase();
+  const cpf = imovel.cpfProprietario || '___.___.___-__';
+  const estadoCivil = imovel.proprietarioEstadoCivil || '___';
+  const nacionalidade = imovel.proprietarioNacionalidade || 'brasileiro(a)';
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: 'ATA DE DECLARAÇÃO DE POSSE MANSA E PACÍFICA', bold: true, size: 26, color: '2E37A4' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `Pelo presente instrumento técnico de instrução processual, o requerente ${proprietario}, nacionalidade ${nacionalidade}, estado civil ${estadoCivil}, inscrito sob o CPF de número ${cpf}, declara sob as penas das leis vigentes e para fins de instrução de Usucapião Extrajudicial conforme Art. 216-A da Lei de Registros Públicos (LRP), que exerce posse mansa, pacífica, contínua e incontestada sobre o imóvel rural/urbano denominado "${imovel.denominacao || 'Gleba de Posse'}", com área de ${imovel.areaHa ? imovel.areaHa.toFixed(4) : '0.0000'} ha, situado no município de ${imovel.municipio || 'Não cadastrado'}-${imovel.uf || ''}.`
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `Declara ainda que a referida posse data de ${dados.tempoPosse || '15 anos'}, tendo sido adquirida através de ${dados.origemPosse || 'Direitos Possessórios'}, mantendo no local moradia habitual e/ou exploração econômica produtiva de forma exclusiva e transparente, sem qualquer oposição de confrontantes ou terceiros interessados durante todo este interregno temporal.`
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Local e data: _________________________, ____ de ______________ de 2026.' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: '____________________________________________________' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: proprietario, bold: true }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: 'Declarante / Requerente da Usucapião' }),
+          ],
+        }),
+      ],
+    }],
+  });
+
+  return await Packer.toBlob(doc);
+}

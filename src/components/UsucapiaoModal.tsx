@@ -107,6 +107,19 @@ export default function UsucapiaoModal({
     doc.save(`${imovel.denominacao || 'imovel'}_laudo_tecnico_usucapiao.pdf`);
   };
 
+  const baixarLaudoDocx = async () => {
+    const { gerarDocxLaudoUsucapiao } = await import('@/lib/export/usucapiao');
+    const { saveAs } = await import('file-saver');
+    const blob = await gerarDocxLaudoUsucapiao(imovel, esc, tecnico, {
+      tempoPosse,
+      origemPosse,
+      tipoUsucapiao,
+      detalhesPosse,
+      anuenteVizinhos
+    });
+    saveAs(blob, `${imovel.denominacao || 'imovel'}_laudo_tecnico_usucapiao.docx`);
+  };
+
   const baixarAta = () => {
     const doc = gerarPdfAtaPosse(imovel, esc, tecnico, {
       tempoPosse,
@@ -116,6 +129,19 @@ export default function UsucapiaoModal({
       anuenteVizinhos
     });
     doc.save(`${imovel.denominacao || 'imovel'}_ata_declaracao_posse.pdf`);
+  };
+
+  const baixarAtaDocx = async () => {
+    const { gerarDocxAtaPosse } = await import('@/lib/export/usucapiao');
+    const { saveAs } = await import('file-saver');
+    const blob = await gerarDocxAtaPosse(imovel, esc, tecnico, {
+      tempoPosse,
+      origemPosse,
+      tipoUsucapiao,
+      detalhesPosse,
+      anuenteVizinhos
+    });
+    saveAs(blob, `${imovel.denominacao || 'imovel'}_ata_declaracao_posse.docx`);
   };
 
   return (
@@ -171,7 +197,7 @@ export default function UsucapiaoModal({
                 <option value="Usucapião Especial Urbana / Pro Misero (Art. 1.240 CC / Art. 183 CF)">Usucapião Especial Urbana / Pro Misero (Art. 1.240 CC)</option>
                 <option value="Usucapião Familiar (Art. 1.240-A CC)">Usucapião Familiar (Art. 1.240-A CC)</option>
                 <option value="Usucapião Coletiva (Art. 10 Lei 10.257/01)">Usucapião Coletiva (Art. 10 Lei 10.257/01)</option>
-                <option value="personalizado">✏️ Personalizado / Digitar Texto Manual...</option>
+                <option value="personalizado">Personalizado / Digitar Texto Manual...</option>
               </select>
               <Input
                 placeholder="Ou digite/ajuste a modalidade de usucapião manualmente"
@@ -216,8 +242,14 @@ export default function UsucapiaoModal({
             <Button variant="outline" className="text-xs font-bold gap-1.5" onClick={baixarAta}>
               <Download className="size-4" /> Ata de Posse (PDF)
             </Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5" onClick={baixarLaudo}>
+            <Button variant="outline" className="text-xs font-bold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={baixarAtaDocx}>
+              <Download className="size-4 text-blue-600" /> Ata de Posse (Word)
+            </Button>
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5 text-xs" onClick={baixarLaudo}>
               <Download className="size-4" /> Laudo de Usucapião (PDF)
+            </Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 text-xs" onClick={baixarLaudoDocx}>
+              <Download className="size-4" /> Laudo de Usucapião (Word)
             </Button>
           </div>
         </div>
