@@ -13348,7 +13348,13 @@ export default function EditorPage() {
       <ImportPreviewModal
         open={!!previewData}
         onOpenChange={(open) => { if (!open) setPreviewData(null); }}
-        pontos={(previewData?.vs || []).map((v: Vertex) => ({ nome: v.codigoSigef || v.nome || '', leste: v.leste, norte: v.norte }))}
+        pontos={(previewData?.vs || []).map((v: Vertex) => ({
+          nome: v.nome || v.codigoSigef || '',
+          codigo: v.codigoSigef || v.nome || '',
+          descricao: v.representacao || v.tipoLimite || (v.tipo === 'M' ? 'Marco de divisa' : v.tipo === 'P' ? 'Ponto de perímetro' : v.tipo === 'V' ? 'Vértice virtual' : ''),
+          leste: v.leste,
+          norte: v.norte,
+        }))}
         zona={previewData?.z ?? zona} hemisferio={hemisferio} fusosPermitidos={tecnico?.fusosPermitidos}
         onConfirm={concluirImportacao}
       />

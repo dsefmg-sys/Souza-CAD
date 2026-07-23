@@ -39,7 +39,14 @@ export interface SelecaoImport {
   nomes: string[];        // por índice original: nome do vértice (editável já na prévia)
 }
 
-interface PontoPrev { nome: string; leste: number; norte: number }
+export interface PontoPrev {
+  nome: string;
+  codigo?: string;
+  codigoSigef?: string;
+  descricao?: string;
+  leste: number;
+  norte: number;
+}
 
 // dois segmentos AB e CD se cruzam? (teste de orientação)
 function orient(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {
@@ -115,7 +122,16 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
 
   const importadosNaOrdem = ordem.filter((i) => i < n && ll[i] && pontos[i] && importar[i]);
   const poligono = importadosNaOrdem.filter((i) => noPoligono[i]).map((i) => ll[i]);
-  const marcadores = importadosNaOrdem.map((i) => ({ idx: i, lat: ll[i][0], lon: ll[i][1], ativo: i === destaque, noPoligono: noPoligono[i], rotulo: nomes[i] || pontos[i].nome }));
+  const marcadores = importadosNaOrdem.map((i) => ({
+    idx: i,
+    lat: ll[i][0],
+    lon: ll[i][1],
+    ativo: i === destaque,
+    noPoligono: noPoligono[i],
+    rotulo: nomes[i] || pontos[i].nome,
+    codigo: pontos[i].codigo || pontos[i].codigoSigef || pontos[i].nome,
+    descricao: pontos[i].descricao,
+  }));
   const destaqueLL = destaque != null && ll[destaque] ? ll[destaque] : null;
 
   const qtdImportar = importar.filter(Boolean).length;
