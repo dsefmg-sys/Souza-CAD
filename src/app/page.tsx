@@ -52,6 +52,7 @@ import { gerarSigefOds, gerarSigefOdsSeparadas, type LinhaConferencia } from '@/
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import AnuenciaModal from '@/components/AnuenciaModal';
+import CrlModal from '@/components/CrlModal';
 import GestaoProjetoModal from '@/components/GestaoProjetoModal';
 import TutorialModal from '@/components/TutorialModal';
 import MobileHome from '@/components/MobileHome';
@@ -1033,6 +1034,7 @@ export default function EditorPage() {
   const [seletorGlebasPecasAberto, setSeletorGlebasPecasAberto] = useState(false);
   const [seletorGlebasPecasAction, setSeletorGlebasPecasAction] = useState<((glebasSel: Gleba[]) => void) | null>(null);
   const [anuenciaAberta, setAnuenciaAberta] = useState(false);
+  const [crlAberta, setCrlAberta] = useState(false);
   const [modalSobreposicaoAberto, setModalSobreposicaoAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
   const [conferirAberto, setConferirAberto] = useState(false);
@@ -5222,6 +5224,33 @@ export default function EditorPage() {
     }
   }
 
+  async function baixarTodasCrlsDireto() {
+    if (!tecnico) { aviso('Configure o responsável técnico primeiro nas configurações.'); return; }
+    const confrontantesAssinam = confrontantes.filter(confrontanteAssina);
+    if (!confrontantesAssinam.length) {
+      aviso('Não há confrontantes que precisem assinar neste projeto (bem público não conta).');
+      return;
+    }
+    setProcessando(true);
+    try {
+      const { gerarCrlLoteDocumento } = await import('@/lib/export/crl');
+      const ladosDe = (id: string) => Object.entries(confrontantePorLado).filter(([, cid]) => cid === id).map(([i]) => Number(i));
+      const compartilhadosDe = (c: Confrontante) => ladosDe(c.id).map((i) => lados[i]).filter(Boolean);
+      const inputDe = (c: Confrontante) => ({
+        imovel, tecnico: tecnico as TecnicoData, confrontante: c, verticesCompartilhados: compartilhadosDe(c),
+        incluirTabelaVertices: true,
+      });
+      const doc = gerarCrlLoteDocumento(confrontantesAssinam.map(inputDe));
+      const blob = await compatibilizarWord2007(await Packer.toBlob(doc));
+      const nome = (imovel.denominacao || 'imovel').replace(/[^\w.-]+/g, '_');
+      saveAs(blob, limparNomeArquivo(`CRL SIGEF - ${nome}.docx`));
+    } catch (e) {
+      aviso('Erro ao gerar Cartas de Reconhecimento de Limites (CRL): ' + (e as Error).message);
+    } finally {
+      setProcessando(false);
+    }
+  }
+
   function dataExtensoHoje(): string {
     const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
     const d = new Date();
@@ -8141,6 +8170,13 @@ export default function EditorPage() {
       onVisualizar: () => setAnuenciaAberta(true),
       onBaixar: () => baixarTodasAnuenciasDireto()
     },
+    {
+      id: 'crl',
+      tipo: 'principais',
+      rotulo: `Carta de Reconhecimento de Limites - CRL SIGEF${sufixoGleba} (.docx)`,
+      onVisualizar: () => setCrlAberta(true),
+      onBaixar: () => baixarTodasCrlsDireto()
+    },
     ...(medioOuMais ? [{
       id: 'errata',
       tipo: 'principais',
@@ -10988,6 +11024,7 @@ export default function EditorPage() {
       </ErrorBoundary>
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} correcoes={correcoes} onChangeCorrecoes={setCorrecoes} onBaixar={() => setBaixou((b) => ({ ...b, errata: true }))} />
       <AnuenciaModal open={anuenciaAberta} onOpenChange={setAnuenciaAberta} confrontantes={confrontantes} lados={lados} mapa={confrontantePorLado} imovel={imovel} tecnico={tecnico} />
+      <CrlModal open={crlAberta} onOpenChange={setCrlAberta} confrontantes={confrontantes} lados={lados} mapa={confrontantePorLado} imovel={imovel} tecnico={tecnico} />
       <HistoriaModal open={historiaAberta} onOpenChange={setHistoriaAberta} />
 
       {/* JANELA MODAL CENTRALIZADA DADOS DO PROJETO */}
