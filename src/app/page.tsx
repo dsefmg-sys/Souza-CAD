@@ -13752,20 +13752,24 @@ function avisoDoc(v?: string): string | undefined {
   return v?.trim() && !cpfOuCnpjValido(v) ? 'CPF/CNPJ inválido (dígitos verificadores incorretos).' : undefined;
 }
 
-function Campo({ label, value, onChange, placeholder, list, aviso, importante }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; list?: string; aviso?: string; importante?: boolean }) {
-  const formatado = /cpf|cnpj/i.test(label) ? formatarCpfCnpj(value) : value;
+function Campo({ label, value, onChange, placeholder, list, aviso, importante, manterCaixa }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; list?: string; aviso?: string; importante?: boolean; manterCaixa?: boolean }) {
+  const isDoc = /cpf|cnpj/i.test(label);
+  const isMun = /município|cidade/i.test(label);
+  const formatado = isDoc ? formatarCpfCnpj(value) : value;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawVal = e.target.value;
-    if (/cpf|cnpj/i.test(label)) {
+    if (isDoc) {
       onChange(formatarCpfCnpj(rawVal));
-    } else {
+    } else if (manterCaixa || isMun) {
       onChange(rawVal);
+    } else {
+      onChange(rawVal.toUpperCase());
     }
   };
 
   const handleBlur = async () => {
-    if (/cpf|cnpj/i.test(label) && value) {
+    if (isDoc && value) {
       const clean = value.replace(/\D/g, '');
       if (clean.length > 0 && !cpfOuCnpjValido(clean)) {
         await avisar({
@@ -13782,7 +13786,7 @@ function Campo({ label, value, onChange, placeholder, list, aviso, importante }:
       <Label className={`text-[10px] uppercase tracking-wide ${importante ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-muted-foreground'}`}>
         {label}{importante && ' *'}
       </Label>
-      <Input list={list} value={formatado} placeholder={placeholder} onChange={handleChange} onBlur={handleBlur} className={`h-8 text-sm${aviso ? ' border-amber-500' : ''}`} />
+      <Input list={list} value={formatado} placeholder={placeholder} onChange={handleChange} onBlur={handleBlur} className={`h-8 text-sm uppercase${aviso ? ' border-amber-500' : ''}`} />
       {aviso && <p className="text-[10px] leading-tight text-amber-600">{aviso}</p>}
     </div>
   );

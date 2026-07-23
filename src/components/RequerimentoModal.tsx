@@ -204,9 +204,8 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           </Label>
           <Input 
             value={pessoa.nome || ''} 
-            onChange={(e) => setNome(e.target.value)} 
-            placeholder="ex.: JOÃO DA SILVA" 
-            className="h-7 text-[11px]" 
+            onChange={(e) => setNome(e.target.value.toUpperCase())} 
+            className="h-7 text-[11px] uppercase font-bold" 
           />
         </div>
 
@@ -219,7 +218,6 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
             value={formatarCpfCnpj(pessoa.cpf || '')} 
             onChange={(e) => update('cpf', formatarCpfCnpj(e.target.value))} 
             onBlur={() => handleBlurDoc('cpf', pessoa.cpf || '')}
-            placeholder="000.000.000-00" 
             className="h-7 text-[11px] font-mono w-full" 
           />
         </div>
@@ -229,28 +227,25 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           <Label className="text-[10px] text-muted-foreground font-semibold leading-none">RG Número</Label>
           <Input 
             value={pessoa.rgNumero ?? (pessoa.rg?.split(' ')[0] || '')} 
-            onChange={(e) => update('rgNumero', e.target.value)} 
-            placeholder="ex.: 12.345.678" 
-            className="h-7 text-[11px]" 
+            onChange={(e) => update('rgNumero', e.target.value.toUpperCase())} 
+            className="h-7 text-[11px] uppercase" 
           />
         </div>
         <div className="col-span-1.5 sm:col-span-2 space-y-0.5">
           <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Órgão Emissor</Label>
           <Input 
             value={pessoa.rgOrgao ?? (pessoa.rg?.split(' ')[1]?.split('/')[0] || '')} 
-            onChange={(e) => update('rgOrgao', e.target.value)} 
-            placeholder="SSP" 
-            className="h-7 text-[11px]" 
+            onChange={(e) => update('rgOrgao', e.target.value.toUpperCase())} 
+            className="h-7 text-[11px] uppercase" 
           />
         </div>
         <div className="col-span-1.5 sm:col-span-2 space-y-0.5">
           <Label className="text-[10px] text-muted-foreground font-semibold leading-none">UF RG</Label>
           <Input 
             value={pessoa.rgUf ?? (pessoa.rg?.split(' ')[1]?.split('/')[1] || '')} 
-            onChange={(e) => update('rgUf', e.target.value)} 
-            placeholder="MG" 
+            onChange={(e) => update('rgUf', e.target.value.toUpperCase())} 
             maxLength={2}
-            className="h-7 text-[11px]" 
+            className="h-7 text-[11px] uppercase" 
           />
         </div>
 
@@ -259,18 +254,16 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Nacionalidade</Label>
           <Input 
             value={pessoa.nacionalidade || 'Brasileira'} 
-            onChange={(e) => update('nacionalidade', e.target.value)} 
-            placeholder="ex.: BRASILEIRA" 
-            className="h-7 text-[11px]" 
+            onChange={(e) => update('nacionalidade', e.target.value.toUpperCase())} 
+            className="h-7 text-[11px] uppercase" 
           />
         </div>
         <div className="col-span-6 sm:col-span-3 space-y-0.5">
           <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Naturalidade</Label>
           <Input 
             value={pessoa.naturalidade || ''} 
-            onChange={(e) => update('naturalidade', e.target.value)} 
-            placeholder="ex.: MANHUAÇU - MG" 
-            className="h-7 text-[11px]" 
+            onChange={(e) => update('naturalidade', e.target.value.toUpperCase())} 
+            className="h-7 text-[11px] uppercase" 
           />
         </div>
 
@@ -280,7 +273,6 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           <Input 
             value={pessoa.dataNascimento || ''} 
             onChange={(e) => update('dataNascimento', e.target.value)} 
-            placeholder="DD/MM/AAAA" 
             className="h-7 text-[11px]" 
           />
         </div>
@@ -288,9 +280,8 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Filiação (mãe / pai)</Label>
           <Input 
             value={pessoa.filiacao || ''} 
-            onChange={(e) => update('filiacao', e.target.value)} 
-            placeholder="ex.: MÃE: ANA SILVA / PAI: JOSÉ SILVA" 
-            className="h-7 text-[11px]" 
+            onChange={(e) => update('filiacao', e.target.value.toUpperCase())} 
+            className="h-7 text-[11px] uppercase" 
           />
         </div>
 
@@ -301,9 +292,8 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           </Label>
           <Input 
             value={pessoa.profissao || ''} 
-            onChange={(e) => update('profissao', e.target.value)} 
-            placeholder="ex.: PRODUTOR RURAL (vazio p/ omitir)" 
-            className="h-7 text-[11px] border-amber-500 bg-amber-500/5 focus-visible:ring-amber-500 text-amber-900 dark:text-amber-300 font-bold" 
+            onChange={(e) => update('profissao', e.target.value.toUpperCase())} 
+            className="h-7 text-[11px] border-amber-500 bg-amber-500/5 focus-visible:ring-amber-500 text-amber-900 dark:text-amber-300 font-bold uppercase" 
           />
         </div>
 
@@ -336,9 +326,8 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
               <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Cônjuge (Nome)</Label>
               <Input 
                 value={pessoa.conjugeNome || ''} 
-                onChange={(e) => update('conjugeNome', e.target.value)} 
-                placeholder="ex.: MARIA DA SILVA" 
-                className="h-7 text-[11px]" 
+                onChange={(e) => update('conjugeNome', e.target.value.toUpperCase())} 
+                className="h-7 text-[11px] uppercase" 
               />
             </div>
             <div className="col-span-6 sm:col-span-2 space-y-0.5">
@@ -347,7 +336,6 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
                 value={formatarCpfCnpj(pessoa.conjugeCpf || '')} 
                 onChange={(e) => update('conjugeCpf', formatarCpfCnpj(e.target.value))} 
                 onBlur={() => handleBlurDoc('conjugeCpf', pessoa.conjugeCpf || '')}
-                placeholder="000.000.000-00" 
                 className="h-7 text-[11px] font-mono w-full" 
               />
             </div>
@@ -357,28 +345,25 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
               <Label className="text-[10px] text-muted-foreground font-semibold leading-none">RG Cônjuge Número</Label>
               <Input 
                 value={pessoa.conjugeRgNumero ?? (pessoa.conjugeRg?.split(' ')[0] || '')} 
-                onChange={(e) => update('conjugeRgNumero', e.target.value)} 
-                placeholder="ex.: 98.765.432" 
-                className="h-7 text-[11px]" 
+                onChange={(e) => update('conjugeRgNumero', e.target.value.toUpperCase())} 
+                className="h-7 text-[11px] uppercase" 
               />
             </div>
             <div className="col-span-1.5 sm:col-span-2 space-y-0.5">
               <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Órgão Emissor</Label>
               <Input 
                 value={pessoa.conjugeRgOrgao ?? (pessoa.conjugeRg?.split(' ')[1]?.split('/')[0] || '')} 
-                onChange={(e) => update('conjugeRgOrgao', e.target.value)} 
-                placeholder="SSP" 
-                className="h-7 text-[11px]" 
+                onChange={(e) => update('conjugeRgOrgao', e.target.value.toUpperCase())} 
+                className="h-7 text-[11px] uppercase" 
               />
             </div>
             <div className="col-span-1.5 sm:col-span-2 space-y-0.5">
               <Label className="text-[10px] text-muted-foreground font-semibold leading-none">UF RG</Label>
               <Input 
                 value={pessoa.conjugeRgUf ?? (pessoa.conjugeRg?.split(' ')[1]?.split('/')[1] || '')} 
-                onChange={(e) => update('conjugeRgUf', e.target.value)} 
-                placeholder="MG" 
+                onChange={(e) => update('conjugeRgUf', e.target.value.toUpperCase())} 
                 maxLength={2}
-                className="h-7 text-[11px]" 
+                className="h-7 text-[11px] uppercase" 
               />
             </div>
           </>
@@ -391,9 +376,8 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           </Label>
           <Input 
             value={pessoa.logradouro ?? (pessoa.endereco?.split(', BAIRRO')[0] || '')} 
-            onChange={(e) => update('logradouro', e.target.value)} 
-            placeholder="ex.: RUA DEODATO SOUZA, 120" 
-            className="h-7 text-[11px]" 
+            onChange={(e) => update('logradouro', e.target.value.toUpperCase())} 
+            className="h-7 text-[11px] uppercase" 
           />
           <div className="flex gap-1">
             <button 
@@ -423,9 +407,8 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Bairro</Label>
           <Input 
             value={pessoa.bairro ?? (pessoa.endereco?.split(', BAIRRO ')[1] || '')} 
-            onChange={(e) => update('bairro', e.target.value)} 
-            placeholder="ex.: CENTRO" 
-            className="h-7 text-[11px]" 
+            onChange={(e) => update('bairro', e.target.value.toUpperCase())} 
+            className="h-7 text-[11px] uppercase" 
           />
           <button 
             type="button" 
@@ -442,7 +425,6 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           <Input 
             value={pessoa.cep || ''} 
             onChange={(e) => update('cep', e.target.value)} 
-            placeholder="36900-000" 
             className="h-7 text-[11px]" 
           />
         </div>
@@ -454,9 +436,8 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           </Label>
           <Input 
             value={pessoa.cidade ?? (pessoa.cidadeUf?.split(' - ')[0] || '')} 
-            onChange={(e) => update('cidade', e.target.value)} 
-            placeholder="ex.: MANHUAÇU" 
-            className="h-7 text-[11px]" 
+            onChange={(e) => update('cidade', e.target.value.toUpperCase())} 
+            className="h-7 text-[11px] uppercase" 
           />
         </div>
         <div className="col-span-6 sm:col-span-2 space-y-0.5">
@@ -465,10 +446,9 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           </Label>
           <Input 
             value={pessoa.uf ?? (pessoa.cidadeUf?.split(' - ')[1] || '')} 
-            onChange={(e) => update('uf', e.target.value)} 
-            placeholder="ex.: MG" 
+            onChange={(e) => update('uf', e.target.value.toUpperCase())} 
             maxLength={2}
-            className="h-7 text-[11px]" 
+            className="h-7 text-[11px] uppercase" 
           />
         </div>
 
@@ -881,7 +861,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                     <Label className="text-[10px] text-muted-foreground font-semibold block leading-none">Valor do imóvel para custas (R$)</Label>
                     <span className="text-[9px] text-muted-foreground block leading-tight mt-0.5">Opcional. Usado pelo oficial do registro para estipular a faixa de emolumentos cartoriais.</span>
                   </div>
-                  <Input type="number" step="0.01" placeholder="ex.: 150000" value={imovel.valorImovel ?? ''} onChange={(e) => onChangeImovel({ ...imovel, valorImovel: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-[11px]" />
+                  <Input type="number" step="0.01" value={imovel.valorImovel ?? ''} onChange={(e) => onChangeImovel({ ...imovel, valorImovel: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-[11px]" />
                 </div>
                 {localTipoAto === 'unificacao' && (
                   <div className="col-span-2 space-y-1">
@@ -890,10 +870,9 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                       <span className="text-[9px] text-muted-foreground block leading-tight mt-0.5">Matrículas antigas que serão unificadas (separadas por vírgula).</span>
                     </div>
                     <Input
-                      placeholder="ex.: 1234, 5678, 9012"
                       value={(imovel.matriculasOrigem ?? []).join(', ')}
-                      onChange={(e) => onChangeImovel({ ...imovel, matriculasOrigem: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-                      className="h-7 text-[11px]"
+                      onChange={(e) => onChangeImovel({ ...imovel, matriculasOrigem: e.target.value.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean) })}
+                      className="h-7 text-[11px] uppercase font-mono"
                     />
                   </div>
                 )}

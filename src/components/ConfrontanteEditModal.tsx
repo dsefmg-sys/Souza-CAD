@@ -17,8 +17,21 @@ interface Props {
   sugCartorios?: CartorioCad[];
 }
 
-function Campo({ label, value, onChange, ph, aviso, list }: { label: string; value: string; onChange: (v: string) => void; ph?: string; aviso?: string; list?: string }) {
-  const formatado = /cpf|cnpj/i.test(label) ? formatarCpfCnpj(value) : value;
+function Campo({ label, value, onChange, ph, aviso, list, manterCaixa }: { label: string; value: string; onChange: (v: string) => void; ph?: string; aviso?: string; list?: string; manterCaixa?: boolean }) {
+  const isDoc = /cpf|cnpj/i.test(label);
+  const formatado = isDoc ? formatarCpfCnpj(value) : value;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    if (isDoc) {
+      onChange(formatarCpfCnpj(rawVal));
+    } else if (manterCaixa) {
+      onChange(rawVal);
+    } else {
+      onChange(rawVal.toUpperCase());
+    }
+  };
+
   return (
     <div>
       <label className="text-[11px] font-bold text-muted-foreground uppercase">{label}</label>
@@ -26,9 +39,9 @@ function Campo({ label, value, onChange, ph, aviso, list }: { label: string; val
         type="text"
         list={list}
         value={formatado}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         placeholder={ph}
-        className={`w-full h-8 px-2.5 text-xs rounded border bg-background ${aviso ? 'border-amber-500 font-mono' : 'border-input'} focus:outline-none focus:ring-1 focus:ring-ring`}
+        className={`w-full h-8 px-2.5 text-xs rounded border bg-background uppercase placeholder:normal-case placeholder:italic ${aviso ? 'border-amber-500 font-mono' : 'border-input'} focus:outline-none focus:ring-1 focus:ring-ring`}
       />
       {aviso && <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">{aviso}</p>}
     </div>
@@ -84,13 +97,13 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
               </select>
             </label>
             
-            <Campo label="Nome ou Denominação" value={c.nome} onChange={(v) => set({ nome: v })} ph={cond === 'publico' ? 'Ex.: Estrada Municipal, Rio das Pedras' : 'Nome do confrontante'} />
+            <Campo label="Nome ou Denominação" value={c.nome} onChange={(v) => set({ nome: v })} />
             
             {cond !== 'publico' && (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <Campo label="CPF / CNPJ" value={c.cpf} onChange={(v) => set({ cpf: v })} aviso={avisoDoc(c.cpf)} />
-                  <Campo label="Estado Civil" value={c.estadoCivil ?? ''} onChange={(v) => set({ estadoCivil: v })} ph="Ex: Casado(a)" />
+                  <Campo label="Estado Civil" value={c.estadoCivil ?? ''} onChange={(v) => set({ estadoCivil: v })} />
                 </div>
                 {cond !== 'posseiro' && (
                   <div className="grid grid-cols-1 gap-3">
