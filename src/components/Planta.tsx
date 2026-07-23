@@ -337,7 +337,7 @@ function BalaoRotuloModoB({
   );
 }
 
-/** Renders a modern CAD Tag/Pill badge ("etiqueta pílula escura de alta visibilidade") for Modo C. */
+/** Renders a compact CAD Tag/Pill badge ("etiqueta pílula compacta de alta visibilidade") for Modo C. */
 function TagRotuloModoC({
   vx,
   vy,
@@ -371,15 +371,15 @@ function TagRotuloModoC({
 
   const lines = (conteudo || '').split('\n');
   const maxLineLength = Math.max(...lines.map((l: string) => l.length), 1);
-  const padX = 5.5;
-  const padY = 3.5;
+  const padX = 3.5;
+  const padY = 2;
   const charW = effectiveFz * 0.62;
-  const boxW = Math.max(effectiveFz * 1.8, maxLineLength * charW + padX * 2);
-  const lineH = effectiveFz * 1.25;
+  const boxW = Math.max(effectiveFz * 1.6, maxLineLength * charW + padX * 2);
+  const lineH = effectiveFz * 1.2;
   const textH = effectiveFz + (lines.length - 1) * lineH;
   const boxH = textH + padY * 2;
 
-  const gap = 5;
+  const gap = 4;
   let baseBx = ox >= 0 ? vx + gap : vx - gap - boxW;
   let baseBy = oy <= 0 ? vy - gap - boxH : vy + gap;
 
@@ -387,13 +387,13 @@ function TagRotuloModoC({
   const by = baseBy + (ovR?.dy ?? 0);
 
   if (editando) {
-    const inputW = Math.max(140, effectiveFz * maxLineLength * 0.65);
-    const inputH = Math.max(54, effectiveFz * lines.length * 1.35 + 24);
+    const inputW = Math.max(120, effectiveFz * maxLineLength * 0.65);
+    const inputH = Math.max(48, effectiveFz * lines.length * 1.35 + 20);
     return (
       <foreignObject x={bx} y={by} width={inputW} height={inputH} style={{ overflow: 'visible' }}>
         <textarea
           autoFocus
-          className="w-full h-full border border-sky-500 bg-slate-900 text-white outline-none px-1 py-0.5 shadow-md rounded-sm resize-y"
+          className="w-full h-full border border-blue-600 bg-white text-slate-900 outline-none px-1 py-0.5 shadow-md rounded-sm resize-y"
           style={{ fontSize: `${effectiveFz}px`, fontWeight: peso, fontFamily: 'Arial, Helvetica, sans-serif', lineHeight: 1.25 }}
           defaultValue={conteudo}
           onBlur={(e) => onTerminarEditar?.(id, e.target.value)}
@@ -420,9 +420,9 @@ function TagRotuloModoC({
   let pinY = by + boxH / 2;
   if (Math.abs(dx) * boxH > Math.abs(dy) * boxW) {
     pinX = dx < 0 ? bx : bx + boxW;
-    pinY = Math.max(by + 2, Math.min(by + boxH - 2, vy));
+    pinY = Math.max(by + 1.5, Math.min(by + boxH - 1.5, vy));
   } else {
-    pinX = Math.max(bx + 2, Math.min(bx + boxW - 2, vx));
+    pinX = Math.max(bx + 1.5, Math.min(bx + boxW - 1.5, vx));
     pinY = dy < 0 ? by : by + boxH;
   }
 
@@ -451,35 +451,35 @@ function TagRotuloModoC({
         y1={vy.toFixed(1)}
         x2={pinX.toFixed(1)}
         y2={pinY.toFixed(1)}
-        stroke="#38bdf8"
-        strokeWidth={0.8}
+        stroke="#2563eb"
+        strokeWidth={0.65}
       />
       {/* Ponto azul de pino no centro do vértice */}
       <circle
         cx={vx.toFixed(1)}
         cy={vy.toFixed(1)}
-        r={1.8}
-        fill="#38bdf8"
+        r={1.5}
+        fill="#2563eb"
       />
-      {/* Corpo da tag pílula escura */}
+      {/* Corpo da tag pílula branca com borda azul CAD */}
       <rect
         x={bx.toFixed(1)}
         y={by.toFixed(1)}
         width={boxW.toFixed(1)}
         height={boxH.toFixed(1)}
-        rx={4}
-        ry={4}
-        fill="#0f172a"
-        stroke="#38bdf8"
+        rx={2.5}
+        ry={2.5}
+        fill="#ffffff"
+        stroke="#2563eb"
         strokeWidth={0.7}
       />
-      {/* Texto branco de alta visibilidade */}
+      {/* Texto de alta visibilidade */}
       <text
         x={bx + padX}
         y={by + padY + effectiveFz * 0.78}
         fontSize={effectiveFz}
         fontWeight={peso}
-        fill="#ffffff"
+        fill="#0f172a"
         fontFamily="Arial, Helvetica, sans-serif"
         style={{ userSelect: 'none', pointerEvents: 'none' }}
       >
@@ -2851,7 +2851,7 @@ export default function Planta({
               }
 
               if (modoRot === 'direto') {
-                const fz = Math.max(5.5, (fonteRot - 0.5) * 0.85);
+                const fz = Math.max(4.2, (fonteRot - 0.5) * 0.65); // 25% a 30% menor para vértices densos
                 return (
                   <TagRotuloModoC
                     vx={vx}

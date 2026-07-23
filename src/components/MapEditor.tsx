@@ -250,21 +250,22 @@ function iconeNomeVerticeModoB(texto: string, tam: number, dirx = 0, diry = 0) {
 }
 
 function iconeNomeVerticeModoC(texto: string, tam: number, dirx = 0, diry = 0) {
-  const fs = tam && tam > 0 ? tam : 11;
+  const baseFs = tam && tam > 0 ? tam : 11;
+  const fs = Math.max(7, Math.round(baseFs * 0.75)); // 25% menor para vértices densos
   const txt = htmlEscape(texto);
-  const { w: estW, h: estH } = estimarCaixaRotulo(texto, tam);
-  const boxW = Math.ceil(estW);
+  const { w: estW, h: estH } = estimarCaixaRotulo(texto, fs);
+  const boxW = Math.ceil(estW * 0.85);
   const boxH = Math.ceil(estH);
-  const padX = 5;
-  const padY = 3;
+  const padX = 3;
+  const padY = 2;
 
   const html = `
     <div style="position:relative; width:${boxW}px; height:${boxH}px; pointer-events:auto;">
       <svg width="${boxW + 16}" height="${boxH + 16}" viewBox="-8 -8 ${boxW + 16} ${boxH + 16}" style="position:absolute; left:-8px; top:-8px; overflow:visible;">
-        <line x1="${dirx >= 0 ? -4 : boxW + 4}" y1="${diry <= 0 ? boxH + 4 : -4}" x2="${boxW / 2}" y2="${boxH / 2}" stroke="#38bdf8" stroke-width="1.2" />
-        <circle cx="${dirx >= 0 ? -4 : boxW + 4}" cy="${diry <= 0 ? boxH + 4 : -4}" r="2" fill="#38bdf8" />
-        <rect x="0" y="0" width="${boxW}" height="${boxH}" rx="4" ry="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2"/>
-        <text x="${padX}" y="${padY + fs * 0.8}" font-size="${fs}px" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">${txt}</text>
+        <line x1="${dirx >= 0 ? -4 : boxW + 4}" y1="${diry <= 0 ? boxH + 4 : -4}" x2="${boxW / 2}" y2="${boxH / 2}" stroke="#2563eb" stroke-width="1" />
+        <circle cx="${dirx >= 0 ? -4 : boxW + 4}" cy="${diry <= 0 ? boxH + 4 : -4}" r="1.5" fill="#2563eb" />
+        <rect x="0" y="0" width="${boxW}" height="${boxH}" rx="3" ry="3" fill="#ffffff" stroke="#2563eb" stroke-width="1.2"/>
+        <text x="${padX}" y="${padY + fs * 0.8}" font-size="${fs}px" font-weight="700" fill="#0f172a" font-family="Arial, sans-serif">${txt}</text>
       </svg>
     </div>
   `;
@@ -273,7 +274,7 @@ function iconeNomeVerticeModoC(texto: string, tam: number, dirx = 0, diry = 0) {
     className: 'vertice-nome-modo-c',
     html,
     iconSize: [boxW, boxH],
-    iconAnchor: [dirx >= 0 ? -4 : boxW + 4, diry <= 0 ? boxH + 4 : -4],
+    iconAnchor: [dirx >= 0 ? -3 : boxW + 3, diry <= 0 ? boxH + 3 : -3],
   });
 }
 
