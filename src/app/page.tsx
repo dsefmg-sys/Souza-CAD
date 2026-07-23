@@ -4343,8 +4343,13 @@ export default function EditorPage() {
       return copy;
     });
   }
-  function onMoverRotulo(id: string, lat: number, lon: number) {
-    setConfrontantes((cs) => cs.map((c) => (c.id === id ? { ...c, posRotulo: { lat, lon } } : c)));
+  function onMoverRotulo(id: string, lat: number, lon: number, dLeste?: number, dNorte?: number) {
+    snap();
+    setConfrontantes((cs) => cs.map((c) => (c.id === id ? {
+      ...c,
+      posRotulo: { lat, lon },
+      ...(dLeste !== undefined && dNorte !== undefined ? { posUtmRelativo: { dLeste, dNorte } } : {})
+    } : c)));
   }
   // edição direta do confrontante na planta (duplo clique abre o editor com prévia)
   function editarConfrontantePlanta(id: string) {
@@ -8454,7 +8459,7 @@ export default function EditorPage() {
                     </div>
                   </div>
 
-                  {/* Rótulos da Planta */}
+                  {/* Rótulos da Planta (Dimensões/Azimutes/Vértices) */}
                   <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <button
@@ -8468,11 +8473,11 @@ export default function EditorPage() {
                             ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
                             : 'border-slate-300 dark:border-zinc-700 text-slate-400 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200'
                         }`}
-                        title={plantaConfig.mostrarRotulosPlanta !== false ? 'Ocultar rótulos e nomes dos vértices/dimensões' : 'Exibir rótulos e nomes dos vértices/dimensões'}
+                        title={plantaConfig.mostrarRotulosPlanta !== false ? 'Ocultar rótulos e dimensões' : 'Exibir rótulos e dimensões'}
                       >
                         {plantaConfig.mostrarRotulosPlanta !== false ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
                       </button>
-                      <span className="whitespace-nowrap">Rótulos e Nomes:</span>
+                      <span className="whitespace-nowrap" title="Ajusta o tamanho das dimensões, azimutes e rótulos das divisas">Rótulos da Planta:</span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.5, Number(((c.escalaTextos ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>

@@ -71,7 +71,7 @@ interface Props {
   onSelecObjeto?: (id: string | null) => void;
   onContextMenuObjeto?: (id: string, tipo: string, x: number, y: number) => void;
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
-  onMoverRotulo?: (id: string, lat: number, lon: number) => void;
+  onMoverRotulo?: (id: string, lat: number, lon: number, dLeste?: number, dNorte?: number) => void;
   onPintarDivisa?: (id: string) => void;
   onPintarConfrontante?: (id: string) => void;
   onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
@@ -2077,7 +2077,12 @@ export default function MapEditor(props: Props) {
         let posLat: number;
         let posLon: number;
 
-        if (c.posRotuloRelativo) {
+        if (c.posUtmRelativo && vA && vB) {
+          const centroUtm = geoParaUtm(centroLat, centroLon, zona, hemisferio);
+          const posGeo = utmParaGeo(centroUtm.leste + c.posUtmRelativo.dLeste, centroUtm.norte + c.posUtmRelativo.dNorte, zona, hemisferio);
+          posLat = posGeo.lat;
+          posLon = posGeo.lon;
+        } else if (c.posRotuloRelativo) {
           posLat = centroLat + c.posRotuloRelativo.dLat;
           posLon = centroLon + c.posRotuloRelativo.dLon;
         } else if (c.posRotulo) {
@@ -2143,9 +2148,11 @@ export default function MapEditor(props: Props) {
                 dragend: (e) => {
                   const marker = e.target;
                   const newPos = marker.getLatLng();
-                  const dLat = newPos.lat - centroLat;
-                  const dLon = newPos.lng - centroLon;
-                  onAjustarPosRotuloConfrontante?.(c.id, newPos.lat, newPos.lng, dLat, dLon);
+                  const centroUtm = geoParaUtm(centroLat, centroLon, zona, hemisferio);
+                  const newUtm = geoParaUtm(newPos.lat, newPos.lng, zona, hemisferio);
+                  const dLeste = newUtm.leste - centroUtm.leste;
+                  const dNorte = newUtm.norte - centroUtm.norte;
+                  onMoverRotulo?.(c.id, newPos.lat, newPos.lng, dLeste, dNorte);
                 },
               }}
             />

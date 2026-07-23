@@ -85,7 +85,7 @@ interface Props {
   onCliqueUnicoGleba?: (id: string, x: number, y: number) => void;
   onCliqueSeçaoCoordenadas?: (id: string) => void;
   glebaAtivaId?: string;
-  onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
+  onMoverRotuloConf?: (id: string, lat: number, lon: number, dLeste?: number, dNorte?: number) => void;
   onRemoverSituacao?: () => void;      // clicar na imagem da situação mostra um X; o X chama isto
   situacaoStale?: boolean;             // desenho mudou desde a última captura do satélite
   onAtualizarSituacao?: () => void;    // clicar no overlay laranja recaptura a situação
@@ -641,6 +641,17 @@ export default function Planta({
   const rotulosConf = confrontantes.filter((c) => !c.oculto).map((c, i) => {
     const idxs = trechos.get(c.id);
     const temSegmento = !!idxs && idxs.length > 0;
+    if (c.posUtmRelativo && temSegmento && idxs) {
+      const meio = idxs[Math.floor(idxs.length / 2)];
+      const vA = vertices[meio], vB = vertices[(meio + 1) % vertices.length];
+      if (vA && vB) {
+        const centroLeste = (vA.leste + vB.leste) / 2;
+        const centroNorte = (vA.norte + vB.norte) / 2;
+        const posX = sx(centroLeste + c.posUtmRelativo.dLeste);
+        const posY = sy(centroNorte + c.posUtmRelativo.dNorte);
+        return { c, x: clampX(posX), y: clampY(posY), temSegmento };
+      }
+    }
     if (c.posRotulo) {
       const u = geoParaUtm(c.posRotulo.lat, c.posRotulo.lon, zona, hemisferio);
       return { c, x: clampX(sx(u.leste)), y: clampY(sy(u.norte)), temSegmento };
@@ -1136,8 +1147,27 @@ export default function Planta({
       } else {
         const g = paraGeo({ x: finalX, y: finalY });
         const k = (d as { kind: string }).kind;
-        if (k === 'rotConf') onMoverRotuloConf?.(d.id, g.lat, g.lon);
-        else if (k === 'rotVert') onMoverRotuloVertice?.(d.id, g.lat, g.lon);
+        if (k === 'rotConf') {
+          const uFinal = geoParaUtm(g.lat, g.lon, zona, hemisferio);
+          const idxs = trechos.get(d.id);
+          if (idxs && idxs.length > 0) {
+            const meio = idxs[Math.floor(idxs.length / 2)];
+            const vA = vertices[meio], vB = vertices[(meio + 1) % vertices.length];
+            if (vA && vB) {
+              const centroLeste = (vA.leste + vB.leste) / 2;
+              const centroNorte = (vA.norte + vB.norte) / 2;
+              const dLeste = uFinal.leste - centroLeste;
+              const dNorte = uFinal.norte - centroNorte;
+              onMoverRotuloConf?.(d.id, g.lat, g.lon, dLeste, dNorte);
+            } else {
+              onMoverRotuloConf?.(d.id, g.lat, g.lon);
+            }
+          } else {
+            onMoverRotuloConf?.(d.id, g.lat, g.lon);
+          }
+        } else if (k === 'rotVert') {
+          onMoverRotuloVertice?.(d.id, g.lat, g.lon);
+        }
       }
     }
     dragRef.current = null;
