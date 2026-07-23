@@ -20,10 +20,17 @@ import {
 import { utmParaGeo } from '@/lib/topo/coords';
 import ErrorBoundary from './ErrorBoundary';
 
-const PreviaSatelite = dynamic(() => import('./PreviaSatelite'), {
-  ssr: false,
-  loading: () => <div className="flex h-full items-center justify-center text-sm text-muted-foreground font-medium">Carregando mapa satélite…</div>,
-});
+const PreviaSatelite = dynamic(
+  () =>
+    import('./PreviaSatelite').catch((err) => {
+      console.warn('Recuperando de falha de carregamento de chunk (PreviaSatelite):', err);
+      return import('./PreviaSatelite');
+    }),
+  {
+    ssr: false,
+    loading: () => <div className="flex h-full items-center justify-center text-sm text-muted-foreground font-medium">Carregando mapa satélite…</div>,
+  }
+);
 
 export interface SelecaoImport {
   ordem: number[];        // índices originais, na ordem de exibição
