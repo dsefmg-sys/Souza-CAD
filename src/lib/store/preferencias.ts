@@ -259,3 +259,48 @@ export function registrarTempoCompleto(ms: number): number {
 export function modoCompletoFixado(): boolean {
   return (carregarPreferencias().tempoCompletoMs || 0) >= LIMITE_MODO_FIXO_MS;
 }
+
+/** Aplica presets recomendados de perfil Iniciante vs. Veterano/Experiente. */
+export function aplicarPerfilInicianteOuVeterano(nivel: 'iniciante' | 'experiente'): PreferenciasApp {
+  const p = carregarPreferencias();
+  let novo: PreferenciasApp;
+
+  if (nivel === 'iniciante') {
+    novo = {
+      ...p,
+      nivelExperiencia: 'iniciante',
+      modo: 'simples',
+      mostrarDicasEducativas: true,
+      bloquearExportacaoIncompleta: true,
+      confirmarAntesApagar: true,
+      iconesCabecalhoOcultos: ['dados', 'trt', 'analise', '3d'],
+      moduloAmbiental: false,
+      moduloUsucapiao: false,
+      moduloAvaliacao: false,
+      moduloJuridico: false,
+      moduloReurb: false,
+      moduloLoteamento: false,
+      moduloCredito: false,
+    };
+  } else {
+    novo = {
+      ...p,
+      nivelExperiencia: 'experiente',
+      modo: 'completo',
+      mostrarDicasEducativas: false,
+      bloquearExportacaoIncompleta: true,
+      confirmarAntesApagar: true,
+      iconesCabecalhoOcultos: [],
+      moduloAmbiental: true,
+      moduloUsucapiao: true,
+      moduloAvaliacao: true,
+      moduloJuridico: true,
+      moduloReurb: true,
+      moduloLoteamento: true,
+      moduloCredito: true,
+    };
+  }
+
+  salvarPreferencias(novo);
+  return novo;
+}

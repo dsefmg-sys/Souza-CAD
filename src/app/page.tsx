@@ -1412,8 +1412,32 @@ export default function EditorPage() {
       if (sessionStorage.getItem('metrica:intro_tocada_sessao')) return false;
     } catch { /* ignore */ }
     return carregarPreferencias().introVideoAtiva;
-  }); // enquanto a abertura roda, escondemos a chave de modo
-  useEffect(() => { try { const p = carregarPreferencias(); setModoApp(p.modo); setTempoCompletoMs(p.tempoCompletoMs || 0); } catch { /* ignore */ } }, []);
+  });
+  const [lembrete20hAberto, setLembrete20hAberto] = useState(false);
+  const ultimoLembreteExibidoMs = useRef(0);
+
+  useEffect(() => {
+    try {
+      const p = carregarPreferencias();
+      setModoApp(p.modo);
+      setTempoCompletoMs(p.tempoCompletoMs || 0);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    const HORAS_20_MS = 20 * 60 * 60 * 1000;
+    const interval = setInterval(() => {
+      try {
+        const p = carregarPreferencias();
+        const tempoTotal = p.tempoCompletoMs || 0;
+        if (tempoTotal >= HORAS_20_MS && (tempoTotal - ultimoLembreteExibidoMs.current) >= HORAS_20_MS) {
+          ultimoLembreteExibidoMs.current = tempoTotal;
+          setLembrete20hAberto(true);
+        }
+      } catch { /* ignore */ }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
   useEffect(() => {
     if (!authCarregando) {
       if (!user && nuvemDisponivel) {
@@ -7595,11 +7619,13 @@ export default function EditorPage() {
 
     const imovelFicticio: ImovelData = {
       ...imovel,
-      denominacao: `${imovel.denominacao || 'FAZENDA'} (DEMO FICTÍCIO)`,
+      denominacao: `${imovel.denominacao || 'SÍTIO SANTA HELENA'} (DEMO FICTÍCIO)`,
       proprietario: propFic,
       cpfProprietario: cpfFic,
+      conjugeProprietario: 'PATRÍCIA MENDES ALVES (DEMO)',
       matricula: '12.345-DEMO',
-      cns: '123456',
+      cns: '12.345-6',
+      comarca: imovel.municipio || 'MUNICÍPIO DEMO-UF',
       codigoImovelIncra: '950.082.014.218-9',
       posseiro: imovel.posseiro ? 'POSSEIRO FICTÍCIO DEMO' : undefined,
       inventarianteNome: imovel.inventarianteNome ? 'INVENTARIANTE FICTÍCIO DEMO' : undefined,
@@ -7610,10 +7636,17 @@ export default function EditorPage() {
       nome: `CONFRONTANTE FICTÍCIO ${i + 1} (DEMO)`,
       cpf: cpfsFicticios[i % cpfsFicticios.length],
       matricula: `${1000 + i * 5}-DEMO`,
-      cns: '123456',
-      conjugeNome: c.conjugeNome ? `CÔNJUGE FICTÍCIO ${i + 1}` : undefined,
-      conjugeCpf: c.conjugeCpf ? cpfsFicticios[(i + 1) % cpfsFicticios.length] : undefined,
+      cns: '12.345-6',
+      conjugeNome: `CÔNJUGE FICTÍCIO ${i + 1} (DEMO)`,
+      conjugeCpf: cpfsFicticios[(i + 1) % cpfsFicticios.length],
     }));
+
+    // Nomeia e garante código sequencial perfeito para todos os vértices
+    const vsCodificados = vertices.map((v, idx) => {
+      const cod = v.codigoSigef || v.nome || `DEMO-M-${String(idx + 1).padStart(4, '0')}`;
+      return { ...v, nome: cod, codigoSigef: cod, registrado: true };
+    });
+    setVertices(vsCodificados);
 
     // Desvincula o ID para salvar como NOVO arquivo de demonstração sem sobrescrever o original!
     setProjetoId(null);
@@ -7627,6 +7660,7 @@ export default function EditorPage() {
       prevGlebas.map((g) => ({
         ...g,
         denominacao: `${g.denominacao || 'Gleba'} (DEMO)`,
+        vertices: vsCodificados,
         confrontantes: confrontantesFicticios,
       }))
     );
@@ -10874,6 +10908,45 @@ export default function EditorPage() {
         }}
         onMascararProjetoAtual={mascararProjetoAtualParaDemo}
       />
+      {/* MODAL DE LEMBRETE AUTOMÁTICO A CADA 20 HORAS DE TRABALHO */}
+      <Dialog open={lembrete20hAberto} onOpenChange={setLembrete20hAberto}>
+        <DialogContent className="max-w-md p-6 rounded-xl bg-background shadow-2xl border border-border">
+          <DialogHeader className="border-b pb-3 mb-2">
+            <DialogTitle className="flex items-center gap-2 text-base font-extrabold text-foreground">
+              <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400">
+                <Sparkles className="size-5" />
+              </div>
+              ⏱️ 20 Horas de Trabalho Concluídas!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-xs leading-relaxed text-muted-foreground">
+            <p>
+              Parabéns! Você acumulou <strong>20 horas de trabalho</strong> no Souza-CAD!
+            </p>
+            <p>
+              Deseja revisar seus módulos ativos e alternar entre a interface <strong>Iniciante</strong> (limpa e despoluída) e <strong>Veterano</strong> (todas as ferramentas avançadas liberadas)?
+            </p>
+          </div>
+          <div className="mt-4 pt-3 border-t flex items-center justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setLembrete20hAberto(false)} className="text-xs font-bold">
+              Manter Como Está
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setLembrete20hAberto(false);
+                setConfigAba('pessoal');
+                setConfigAberta(true);
+              }}
+              className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5"
+            >
+              <Sparkles className="size-3.5" />
+              Revisar Módulos &amp; Perfil
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <MeioAmbienteModal
         open={meioAmbienteAberto}
         onOpenChange={setMeioAmbienteAberto}

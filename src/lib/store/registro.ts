@@ -37,6 +37,10 @@ export async function registrarPontos(
   hemisferio: 'N' | 'S',
   tec: TecnicoData
 ): Promise<{ vertices: Vertex[]; pontos: PontoRegistro[] }> {
+  if (imovelId?.includes('DEMO') || imovelId?.includes('FICTICIO') || imovelId?.includes('COPIA DADOS FICTICIOS')) {
+    // Projetos de demonstração e vídeos não consomem nem afetam o banco/contador oficial de vértices
+    return { vertices, pontos: [] };
+  }
   const uid = auth()?.currentUser?.uid ?? null;
   if (firebaseConfigurado && uid) {
     try {

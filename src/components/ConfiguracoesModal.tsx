@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database, Music, Shield, Crown, Phone, Building2, Users, User, Sliders, Binary, Settings, Coins, Keyboard, Grid, Leaf, Scale, LayoutGrid, Lock, Sprout } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database, Music, Shield, Crown, Phone, Building2, Users, User, Sliders, Binary, Settings, Coins, Keyboard, Grid, Leaf, Scale, LayoutGrid, Lock, Sprout, Sparkles } from 'lucide-react';
 import ModelosDocsModal from './ModelosDocsModal';
 import PontosBancoModal from './PontosBancoModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
@@ -32,7 +32,7 @@ import {
 import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte, carregarWhatsappSuporteNome, salvarWhatsappSuporteNome, carregarGeminiApiKey, salvarGeminiApiKey } from '@/lib/store/suporte';
 import { minhaEmpresa, type Empresa } from '@/lib/store/empresas';
 import { carregarModelos, salvarModelos, MODELOS_PADRAO } from '@/lib/store/modelos';
-import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENCIAS_PADRAO, ATALHOS_F_PADRAO, ATALHOS_COMANDO_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
+import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, aplicarPerfilInicianteOuVeterano, PREFERENCIAS_PADRAO, ATALHOS_F_PADRAO, ATALHOS_COMANDO_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes, salvarPadroes, PADROES_PADRAO, type PadroesProjeto } from '@/lib/store/padroes';
 import { carregarPrecos, salvarPrecos, type PrecoServico } from '@/lib/store/precos';
 import { exportarConfiguracoesJson, importarConfiguracoesJson } from '@/lib/store/backup';
@@ -900,6 +900,46 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
           {aba === 'comportamento' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
+                <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-xs text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                      <Sparkles className="size-4 text-indigo-500" /> Perfil de Uso &amp; Módulos Ativos
+                    </div>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">
+                      {prefs.nivelExperiencia === 'experiente' ? 'Veterano' : 'Iniciante'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Alterne instantaneamente os módulos e ferramentas visíveis entre a interface despoluída (Iniciante) e a suíte completa (Veterano).
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant={prefs.nivelExperiencia === 'iniciante' ? 'default' : 'outline'}
+                      className={`h-8 text-xs font-bold ${prefs.nivelExperiencia === 'iniciante' ? 'bg-indigo-600 text-white' : ''}`}
+                      onClick={() => {
+                        const atualizado = aplicarPerfilInicianteOuVeterano('iniciante');
+                        setPrefs(atualizado);
+                        onConfigChange?.();
+                      }}
+                    >
+                      🌱 Perfil Iniciante
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={prefs.nivelExperiencia === 'experiente' ? 'default' : 'outline'}
+                      className={`h-8 text-xs font-bold ${prefs.nivelExperiencia === 'experiente' ? 'bg-indigo-600 text-white' : ''}`}
+                      onClick={() => {
+                        const atualizado = aplicarPerfilInicianteOuVeterano('experiente');
+                        setPrefs(atualizado);
+                        onConfigChange?.();
+                      }}
+                    >
+                      ⚡ Perfil Veterano
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Conferência antes de exportar</div>
                 <Interruptor
                   ligado={prefs.bloquearExportacaoIncompleta}

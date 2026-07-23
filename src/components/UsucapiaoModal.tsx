@@ -145,10 +145,39 @@ export default function UsucapiaoModal({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold">Modalidade de Usucapião</Label>
+              <select
+                className="w-full rounded-md border bg-background px-3 py-1.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-indigo-500 mb-1"
+                value={
+                  [
+                    'Usucapião Extrajudicial (Art. 216-A LRP / Provimento 65 CNJ)',
+                    'Usucapião Extraordinária (Art. 1.238 CC)',
+                    'Usucapião Ordinária (Art. 1.242 CC)',
+                    'Usucapião Especial Rural / Pro Labore (Art. 1.239 CC / Art. 191 CF)',
+                    'Usucapião Especial Urbana / Pro Misero (Art. 1.240 CC / Art. 183 CF)',
+                    'Usucapião Familiar (Art. 1.240-A CC)',
+                    'Usucapião Coletiva (Art. 10 Lei 10.257/01)'
+                  ].includes(tipoUsucapiao) ? tipoUsucapiao : 'personalizado'
+                }
+                onChange={(e) => {
+                  if (e.target.value !== 'personalizado') {
+                    setTipoUsucapiao(e.target.value);
+                  }
+                }}
+              >
+                <option value="Usucapião Extrajudicial (Art. 216-A LRP / Provimento 65 CNJ)">Usucapião Extrajudicial (Art. 216-A LRP / Provimento 65 CNJ)</option>
+                <option value="Usucapião Extraordinária (Art. 1.238 CC)">Usucapião Extraordinária (Art. 1.238 CC)</option>
+                <option value="Usucapião Ordinária (Art. 1.242 CC)">Usucapião Ordinária (Art. 1.242 CC)</option>
+                <option value="Usucapião Especial Rural / Pro Labore (Art. 1.239 CC / Art. 191 CF)">Usucapião Especial Rural / Pro Labore (Art. 1.239 CC)</option>
+                <option value="Usucapião Especial Urbana / Pro Misero (Art. 1.240 CC / Art. 183 CF)">Usucapião Especial Urbana / Pro Misero (Art. 1.240 CC)</option>
+                <option value="Usucapião Familiar (Art. 1.240-A CC)">Usucapião Familiar (Art. 1.240-A CC)</option>
+                <option value="Usucapião Coletiva (Art. 10 Lei 10.257/01)">Usucapião Coletiva (Art. 10 Lei 10.257/01)</option>
+                <option value="personalizado">✏️ Personalizado / Digitar Texto Manual...</option>
+              </select>
               <Input
-                placeholder="Ex: Usucapião Extraordinária, Ordinária, Rural"
+                placeholder="Ou digite/ajuste a modalidade de usucapião manualmente"
                 value={tipoUsucapiao}
                 onChange={(e) => setTipoUsucapiao(e.target.value)}
+                className="text-xs"
               />
             </div>
             <div className="space-y-1.5">
