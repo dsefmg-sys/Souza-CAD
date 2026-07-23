@@ -912,14 +912,24 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                       Configuração do Disparador de E-mail (Servidor SMTP)
                     </span>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setMostrarTutorialSmtp(true)}
-                    className="text-xs font-bold gap-1.5 border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/20"
-                  >
-                    <BookOpen className="size-4 text-indigo-400" /> Passo a Passo: Como obter a Senha de App
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="https://myaccount.google.com/apppasswords"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition-all shrink-0"
+                    >
+                      <ExternalLink className="size-4" /> Abrir Google: Gerar Senha de App
+                    </a>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setMostrarTutorialSmtp(true)}
+                      className="text-xs font-bold gap-1.5 border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/20"
+                    >
+                      <BookOpen className="size-4 text-indigo-400" /> Passo a Passo
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Seleção rápida de Provedores (Presets) */}
@@ -957,14 +967,24 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                   </div>
                 </div>
 
-                {/* Alerta de Esclarecimento sobre Senha de App */}
-                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1">
+                {/* Alerta de Esclarecimento sobre Senha de App com botão direto do Google */}
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2">
                   <div className="font-extrabold text-amber-300 flex items-center gap-1.5 uppercase tracking-wide">
                     <AlertTriangle className="size-4 shrink-0 text-amber-400" /> IMPORTANTE: Qual senha colocar no campo &quot;Senha de app&quot;?
                   </div>
                   <p className="text-zinc-300 leading-relaxed">
                     <strong>NÃO digite a senha pessoal da sua conta de e-mail!</strong> Para sua segurança, o Google (Gmail) e a Microsoft (Outlook) bloqueiam a senha normal. É necessário gerar uma <strong>&quot;Senha de App&quot; de 16 letras</strong> no seu provedor.
                   </p>
+                  <div className="pt-1 flex flex-wrap gap-2 items-center">
+                    <a
+                      href="https://myaccount.google.com/apppasswords"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all"
+                    >
+                      <ExternalLink className="size-3.5" /> Clique Aqui para Abrir o Google e Gerar sua Senha de App
+                    </a>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
