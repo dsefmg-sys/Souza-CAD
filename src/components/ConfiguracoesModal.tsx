@@ -16,6 +16,9 @@ import type { TecnicoData, EscritorioData, RegistroProfissionalExtra, ColegaCad 
 import {
   carregarTecnico,
   salvarTecnico,
+  carregarListaTecnicos,
+  salvarListaTecnicos,
+  definirTecnicoAtivo,
   TECNICO_PADRAO,
   carregarEscritorio,
   salvarEscritorio,
@@ -130,7 +133,66 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     }
   }, [open, abaInicial]);
   const [t, setT] = useState<TecnicoData>(TECNICO_PADRAO);
+  const [listaTecnicos, setListaTecnicos] = useState<TecnicoData[]>([]);
   const [esc, setEsc] = useState<EscritorioData>(ESCRITORIO_PADRAO);
+
+  const changeT = (k: keyof TecnicoData, val: TecnicoData[keyof TecnicoData]) => {
+    const updated = { ...t, [k]: val };
+    setT(updated);
+    salvarTecnico(updated);
+    const idAtual = t.cft || t.nome;
+    const baseLista = listaTecnicos.length > 0 ? listaTecnicos : [t];
+    const novaLista = baseLista.map((item) =>
+      (item.cft || item.nome) === idAtual || item.credenciamentoIncra === t.credenciamentoIncra ? updated : item
+    );
+    if (!novaLista.some((item) => (item.cft || item.nome) === (updated.cft || updated.nome))) {
+      novaLista.push(updated);
+    }
+    setListaTecnicos(novaLista);
+    salvarListaTecnicos(novaLista, updated.cft || updated.nome);
+    onConfigChange?.();
+    flash('Salvo automaticamente');
+  };
+
+  const selecionarRtDaLista = (identificador: string) => {
+    const enc = listaTecnicos.find((item) => (item.cft || item.nome) === identificador || item.credenciamentoIncra === identificador);
+    if (enc) {
+      setT(enc);
+      definirTecnicoAtivo(identificador);
+      onConfigChange?.();
+      flash(`Responsável técnico ativo: "${enc.nome}".`);
+    }
+  };
+
+  const adicionarNovoRt = () => {
+    const novonum = listaTecnicos.length + 1;
+    const novo: TecnicoData = {
+      ...TECNICO_PADRAO,
+      nome: `RESPONSÁVEL TÉCNICO ${novonum}`,
+      cft: `REG-${novonum}`,
+      credenciamentoIncra: `RT${novonum}`,
+    };
+    const novaLista = [...listaTecnicos, novo];
+    setListaTecnicos(novaLista);
+    setT(novo);
+    salvarListaTecnicos(novaLista, novo.cft || novo.nome);
+    onConfigChange?.();
+    flash('Novo Responsável Técnico cadastrado.');
+  };
+
+  const excluirRtAtual = () => {
+    if (listaTecnicos.length <= 1) {
+      flash('É necessário manter ao menos 1 Responsável Técnico cadastrado.');
+      return;
+    }
+    const idAtual = t.cft || t.nome;
+    const novaLista = listaTecnicos.filter((item) => (item.cft || item.nome) !== idAtual);
+    setListaTecnicos(novaLista);
+    setT(novaLista[0]);
+    salvarListaTecnicos(novaLista, novaLista[0].cft || novaLista[0].nome);
+    onConfigChange?.();
+    flash('Responsável Técnico removido.');
+  };
   const [msg, setMsg] = useState('');
   const [importTxtAberto, setImportTxtAberto] = useState(false);
   const [importVizinhoAberto, setImportVizinhoAberto] = useState(false);
@@ -282,6 +344,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   useEffect(() => {
     if (open) {
       setT(carregarTecnico());
+      setListaTecnicos(carregarListaTecnicos());
       setEsc(carregarEscritorio());
       temModeloSigefProprio().then(setModeloProprio).catch((e) => console.warn('[ConfigModal] temModeloSigefProprio:', e));
       setPrefs(carregarPreferencias());
@@ -327,14 +390,6 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     setMsg(m);
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     flashTimerRef.current = setTimeout(() => setMsg(''), 2000);
-  };
-
-  const changeT = (k: keyof TecnicoData, val: TecnicoData[keyof TecnicoData]) => {
-    const updated = { ...t, [k]: val };
-    setT(updated);
-    salvarTecnico(updated);
-    onConfigChange?.();
-    flash('Salvo automaticamente');
   };
 
   // Formações/registros ADICIONAIS do técnico (além da principal) — ex.: também é engenheiro.
@@ -712,6 +767,41 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
           <div className="flex-1 overflow-y-auto p-6 bg-background">
           {aba === 'pessoal' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Gestão e Seleção de Múltiplos Responsáveis Técnicos */}
+              <div className="md:col-span-2 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <User className="size-4 text-emerald-600 dark:text-emerald-400" />
+                    <Label className="text-xs font-black uppercase tracking-wider text-foreground">
+                      Responsável Técnico Ativo (Total Cadastrados: {listaTecnicos.length})
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" type="button" onClick={adicionarNovoRt} className="h-7 text-xs font-bold gap-1 text-emerald-600 border-emerald-500/40 hover:bg-emerald-500/10">
+                      <Plus className="size-3.5" /> Adicionar Outro RT
+                    </Button>
+                    {listaTecnicos.length > 1 && (
+                      <Button size="sm" variant="outline" type="button" onClick={excluirRtAtual} className="h-7 text-xs font-bold gap-1 text-rose-600 border-rose-500/40 hover:bg-rose-500/10">
+                        <Trash2 className="size-3.5" /> Remover RT Ativo
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {listaTecnicos.length > 1 && (
+                  <select
+                    className="w-full rounded-md border border-emerald-500/30 bg-background px-3 py-1.5 text-xs font-bold text-foreground"
+                    value={t.cft || t.nome}
+                    onChange={(e) => selecionarRtDaLista(e.target.value)}
+                  >
+                    {listaTecnicos.map((item, idx) => (
+                      <option key={idx} value={item.cft || item.nome}>
+                        {item.nome} ({item.conselho || 'CFT'}: {item.cft || 'Sem registro'} | INCRA: {item.credenciamentoIncra || 'Sem código'})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
               <div className="space-y-3.5">
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Nome Completo</Label>

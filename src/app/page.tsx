@@ -11216,6 +11216,36 @@ export default function EditorPage() {
                       <Button
                         type="button"
                         size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs font-bold border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20"
+                        title="Detecta o prefixo e o próximo número sequencial a partir do último vértice cadastrado no projeto"
+                        onClick={() => {
+                          const comCodigo = vertices.filter((v) => v.codigoSigef || v.nome);
+                          const ult = comCodigo[comCodigo.length - 1];
+                          if (!ult) {
+                            aviso('Nenhum vértice com código encontrado para detectar.');
+                            return;
+                          }
+                          const cod = ult.codigoSigef || ult.nome || '';
+                          const match = cod.match(/^(.*?)[-_]?(?:([MPV])[-_]?)?(\d+)$/i);
+                          if (match) {
+                            const pref = match[1] ? match[1].toUpperCase() : (tecnico?.credenciamentoIncra || 'INCRA');
+                            const tipo = match[2] ? match[2].toUpperCase() : 'M';
+                            const num = parseInt(match[3], 10) + 1;
+                            setPrefixoLote(pref);
+                            if (tipo === 'M') setMarcoInicialLote(num);
+                            else if (tipo === 'P') setPontoInicialLote(num);
+                            aviso(`Numeração sequencial configurada a partir do último vértice (${cod}): início em ${num}.`);
+                          } else {
+                            aviso(`Último vértice encontrado: "${cod}". Digite a numeração inicial desejada.`);
+                          }
+                        }}
+                      >
+                        Detectar do Último Vértice
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
                         className="h-7 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
                         onClick={() => {
                           snap();

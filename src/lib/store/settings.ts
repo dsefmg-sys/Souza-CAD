@@ -174,6 +174,50 @@ export function salvarEscritorio(e: EscritorioData): void {
   }
 }
 
+// ----- Múltiplos Responsáveis Técnicos (RTs) -----
+const KEY_LISTA_TECNICOS = 'metrica.listaTecnicos';
+const KEY_TECNICO_ATIVO_ID = 'metrica.tecnicoAtivoId';
+
+export function carregarListaTecnicos(): TecnicoData[] {
+  if (typeof window === 'undefined') return [TECNICO_PADRAO];
+  try {
+    const raw = localStorage.getItem(KEY_LISTA_TECNICOS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /* ignore */ }
+  // Fallback: se ainda não tiver a lista salva, gera a partir do técnico principal atual
+  const atual = carregarTecnico();
+  return [atual];
+}
+
+export function salvarListaTecnicos(lista: TecnicoData[], ativoId?: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(KEY_LISTA_TECNICOS, JSON.stringify(lista));
+    if (ativoId) {
+      localStorage.setItem(KEY_TECNICO_ATIVO_ID, ativoId);
+      const ativo = lista.find((t) => (t.cft || t.nome) === ativoId) || lista[0];
+      if (ativo) salvarTecnico(ativo);
+    } else if (lista.length > 0) {
+      salvarTecnico(lista[0]);
+    }
+  } catch { /* ignore */ }
+}
+
+export function definirTecnicoAtivo(identificador: string): TecnicoData | null {
+  if (typeof window === 'undefined') return null;
+  const lista = carregarListaTecnicos();
+  const enc = lista.find((t) => (t.cft || t.nome) === identificador || t.credenciamentoIncra === identificador);
+  if (enc) {
+    salvarTecnico(enc);
+    try { localStorage.setItem(KEY_TECNICO_ATIVO_ID, identificador); } catch {}
+    return enc;
+  }
+  return null;
+}
+
 export function carregarTecnico(): TecnicoData {
   if (typeof window === 'undefined') return TECNICO_PADRAO;
   try {
