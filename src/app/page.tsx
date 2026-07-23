@@ -1020,6 +1020,7 @@ export default function EditorPage() {
   const [contadorSugerido, setContadorSugerido] = useState<Contadores | null>(null);
   const [importModalAberto, setImportModalAberto] = useState(false);
   const [importPendingFile, setImportPendingFile] = useState<File | null>(null);
+  const [importPendingBuffer, setImportPendingBuffer] = useState<ArrayBuffer | null>(null);
   const [vista, setVista] = useState<'mapa' | 'planta' | '3d'>('mapa');
   const { modo3dAtivado, videosUrl, videosTutorial } = useSuporteData();
 
@@ -2946,15 +2947,28 @@ export default function EditorPage() {
 
   async function importarArquivo(file: File) {
     if (processando) return;
-    // Valida o tamanho ANTES de qualquer trabalho pesado: ler o arquivo, fazer parse, mexer no
-    // estado. Um DXF de 500MB iria travar a aba por minutos; melhor cortar logo.
     const v = validarTamanhoArquivo(file);
     if (!v.ok) { aviso(v.erro); return; }
-    setImportPendingFile(file);
+
+    let buf: ArrayBuffer;
+    try {
+      buf = await file.arrayBuffer();
+      setImportPendingFile(file);
+      setImportPendingBuffer(buf);
+    } catch (err: any) {
+      console.error('Erro ao ler arquivo selecionado:', err);
+      const isNotReadable = err?.name === 'NotReadableError' || err?.message?.includes('NotReadableError');
+      await avisar({
+        titulo: 'Erro de Acesso ao Arquivo',
+        mensagem: isNotReadable
+          ? `O arquivo "${file.name}" não pôde ser lido pelo navegador. Certifique-se de que ele não está aberto ou bloqueado por outro programa (ex: AutoCAD, Civil3D, Excel ou OneDrive) e tente novamente.`
+          : `Não foi possível ler o arquivo "${file.name}": ${err?.message || 'Permissão negada.'}`
+      });
+      return;
+    }
 
     if (file.name.toLowerCase().endsWith('.txt') || file.name.toLowerCase().endsWith('.csv')) {
       try {
-        const buf = await file.arrayBuffer();
         const texto = new TextDecoder('windows-1252').decode(buf);
         const pontos = parseTxt(texto, carregarImportTxt());
         
@@ -2982,7 +2996,12 @@ export default function EditorPage() {
     const { numGlebas, municipio, fuso } = data;
     setProcessando(true);
     try {
-      const buf = await importPendingFile.arrayBuffer();
+      let buf: ArrayBuffer;
+      if (importPendingBuffer) {
+        buf = importPendingBuffer;
+      } else {
+        buf = await importPendingFile.arrayBuffer();
+      }
       // Formato heterogêneo: GML/KML só populam leste/norte + alguns metadados opcionais; o ramo TXT
       // usa RawPoint completo (que também satisfaz este tipo, já que só exige leste/norte).
       let perim: { leste: number; norte: number; altitude?: number; id?: string; nome?: string; tipo?: 'M' | 'P' | 'V'; metodo?: string; limite?: string; sigmaH?: number; sigmaV?: number; codigoSigef?: string }[] = [];
@@ -3167,8 +3186,12 @@ export default function EditorPage() {
         isGmlImport
       });
 
-    } catch (e) {
-      aviso('Erro na importação: ' + (e as Error).message);
+    } catch (e: any) {
+      console.error('Erro na importação:', e);
+      const isNotReadable = e?.name === 'NotReadableError' || e?.message?.includes('NotReadableError');
+      aviso(isNotReadable
+        ? 'O arquivo não pôde ser lido do disco. Certifique-se de que ele não está aberto ou bloqueado por outro aplicativo (ex: AutoCAD, Civil3D, Excel ou OneDrive) e tente novamente.'
+        : 'Erro na importação: ' + (e?.message || 'formato ou arquivo inválido'));
     } finally {
       setProcessando(false);
     }
@@ -6965,6 +6988,15 @@ export default function EditorPage() {
         setNomeProjetoManual(false);
       }
       aviso(`${vs.length} vértices importados do DXF na ${glebaAtivaNome} (fuso ${z}${hemisferio}).`);
+    } catch (err: any) {
+      console.error('Erro ao ler DXF:', err);
+      const isNotReadable = err?.name === 'NotReadableError' || err?.message?.includes('NotReadableError');
+      await avisar({
+        titulo: 'Erro ao Importar DXF',
+        mensagem: isNotReadable
+          ? `O arquivo DXF "${file.name}" não pôde ser lido. Certifique-se de que ele não está aberto ou bloqueado no AutoCAD/Civil3D e tente novamente.`
+          : 'Erro ao processar o DXF: ' + (err?.message || 'formato inválido')
+      });
     } finally { setProcessando(false); }
   }
 
@@ -7709,60 +7741,59 @@ export default function EditorPage() {
     }
   }
 
-  function importarProjetoJson(file: File) {
+  async function importarProjetoJson(file: File) {
     setProcessando(true);
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const text = e.target?.result as string;
-        const rawProj = JSON.parse(text) as Projeto;
-        if (!rawProj || (!Array.isArray(rawProj.glebas) && !Array.isArray(rawProj.vertices))) {
-          throw new Error('Arquivo de projeto inválido ou corrompido.');
-        }
-        
-        const proj = migrarProjeto(rawProj);
-        
-        setProjetoId(proj.id);
-        setNomeProjeto(proj.nome);
-        setNomeProjetoManual(true);
-        if (proj.imovel) setImovel(proj.imovel);
-        if (typeof proj.zonaUtm === 'number') setZona(proj.zonaUtm);
-        if (proj.hemisferio) setHemisferio(proj.hemisferio);
-        setRequerente(proj.requerente);
-        setTransmitente(proj.transmitente);
-        setPlantaConfig(proj.plantaConfig ?? {});
-        setGlebas(proj.glebas);
-        carregarGleba(proj.glebas[0]);
-        setSituacaoUrl(proj.plantaConfig?.situacaoDataUrl);
-        if (proj.plantaConfig?.situacaoDataUrl) setSituacaoVersSnapshot(montarSnapshotDesenho(proj.glebas));
-        setPrint3dUrl(proj.plantaConfig?.print3dDataUrl);
-        const pc = proj.parcelasCert ?? [];
-        setParcelasCert(pc);
-        setReferencias(referenciasDeParcelasCert(pc, proj.zonaUtm, proj.hemisferio));
-        setVerticesVizinho(proj.verticesVizinho ?? []);
-        setGradeAltimetrica(proj.gradeAltimetrica ?? (proj as unknown as { ga?: typeof proj.gradeAltimetrica }).ga ?? []);
-        acabouDeSalvar.current = true;
-        setSalvarLaranja(false);
-        setSalvoOk(true);
-        
-        const salvarBanco = await confirmar({ titulo: 'Salvar no banco', mensagem: `Deseja salvar o projeto importado "${proj.nome}" no seu banco de dados para acessá-lo facilmente no futuro?`, okLabel: 'Salvar no banco' });
-        if (salvarBanco) {
-          await salvarProjeto(proj);
-          atualizarLista();
-        }
-
-        aviso(`Projeto "${proj.nome}" importado com sucesso!`);
-      } catch (err) {
-        await avisar({ titulo: 'Erro', mensagem: err instanceof Error ? err.message : 'Erro ao importar projeto.' });
-      } finally {
-        setProcessando(false);
+    try {
+      const text = await file.text();
+      const rawProj = JSON.parse(text) as Projeto;
+      if (!rawProj || (!Array.isArray(rawProj.glebas) && !Array.isArray(rawProj.vertices))) {
+        throw new Error('Arquivo de projeto inválido ou corrompido.');
       }
-    };
-    reader.onerror = () => {
-      aviso('Erro ao ler o arquivo de projeto.');
+      
+      const proj = migrarProjeto(rawProj);
+      
+      setProjetoId(proj.id);
+      setNomeProjeto(proj.nome);
+      setNomeProjetoManual(true);
+      if (proj.imovel) setImovel(proj.imovel);
+      if (typeof proj.zonaUtm === 'number') setZona(proj.zonaUtm);
+      if (proj.hemisferio) setHemisferio(proj.hemisferio);
+      setRequerente(proj.requerente);
+      setTransmitente(proj.transmitente);
+      setPlantaConfig(proj.plantaConfig ?? {});
+      setGlebas(proj.glebas);
+      carregarGleba(proj.glebas[0]);
+      setSituacaoUrl(proj.plantaConfig?.situacaoDataUrl);
+      if (proj.plantaConfig?.situacaoDataUrl) setSituacaoVersSnapshot(montarSnapshotDesenho(proj.glebas));
+      setPrint3dUrl(proj.plantaConfig?.print3dDataUrl);
+      const pc = proj.parcelasCert ?? [];
+      setParcelasCert(pc);
+      setReferencias(referenciasDeParcelasCert(pc, proj.zonaUtm, proj.hemisferio));
+      setVerticesVizinho(proj.verticesVizinho ?? []);
+      setGradeAltimetrica(proj.gradeAltimetrica ?? (proj as unknown as { ga?: typeof proj.gradeAltimetrica }).ga ?? []);
+      acabouDeSalvar.current = true;
+      setSalvarLaranja(false);
+      setSalvoOk(true);
+      
+      const salvarBanco = await confirmar({ titulo: 'Salvar no banco', mensagem: `Deseja salvar o projeto importado "${proj.nome}" no seu banco de dados para acessá-lo facilmente no futuro?`, okLabel: 'Salvar no banco' });
+      if (salvarBanco) {
+        await salvarProjeto(proj);
+        atualizarLista();
+      }
+
+      aviso(`Projeto "${proj.nome}" importado com sucesso!`);
+    } catch (err: any) {
+      console.error('Erro ao ler projeto JSON:', err);
+      const isNotReadable = err?.name === 'NotReadableError' || err?.message?.includes('NotReadableError');
+      await avisar({
+        titulo: 'Erro ao Importar Projeto',
+        mensagem: isNotReadable
+          ? `O arquivo de projeto "${file.name}" não pôde ser lido. Certifique-se de que ele não está bloqueado ou em uso por outro programa e tente novamente.`
+          : (err instanceof Error ? err.message : 'Erro ao importar projeto.')
+      });
+    } finally {
       setProcessando(false);
-    };
-    reader.readAsText(file);
+    }
   }
 
   useEffect(() => { if (aba === 'projetos' || projetosModalAberto) atualizarLista(); }, [aba, projetosModalAberto]);
