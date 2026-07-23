@@ -3562,8 +3562,14 @@ export default function EditorPage() {
   // Considerar vértice: reinsere um vértice ignorado no segmento mais próximo do anel atual.
   function considerarVertice(id: string) {
     const v = verticesIgnorados.find((x) => x.id === id);
-    if (!v || vertices.length < 2) return;
+    if (!v) return;
     snap();
+    if (vertices.length < 2) {
+      setVertices((vs) => [...vs, v]);
+      setVerticesIgnorados((xs) => xs.filter((x) => x.id !== id));
+      aviso('Ponto adicionado ao polígono.');
+      return;
+    }
     let melhor = vertices.length - 1, melhorD = Infinity;
     for (let i = 0; i < vertices.length; i++) {
       const a = vertices[i], b = vertices[(i + 1) % vertices.length];
@@ -3577,6 +3583,42 @@ export default function EditorPage() {
     });
     setVerticesIgnorados((xs) => xs.filter((x) => x.id !== id));
     aviso('Vértice reincluído no segmento mais próximo.');
+  }
+
+  function moverVerticePosicao(index: number, direcao: 'subir' | 'descer') {
+    snap();
+    setVertices((vs) => {
+      const novos = [...vs];
+      const outroIndex = direcao === 'subir' ? index - 1 : index + 1;
+      if (outroIndex >= 0 && outroIndex < novos.length) {
+        const temp = novos[index];
+        novos[index] = novos[outroIndex];
+        novos[outroIndex] = temp;
+      }
+      return novos;
+    });
+  }
+
+  function moverVerticeParaGleba(vId: string, targetGlebaId: string) {
+    snap();
+    const v = [...vertices, ...verticesIgnorados].find(x => x.id === vId);
+    if (!v) return;
+    
+    // Remove da gleba ativa
+    setVertices(vs => vs.filter(x => x.id !== vId));
+    setVerticesIgnorados(xs => xs.filter(x => x.id !== vId));
+    
+    // Adiciona na gleba destino
+    setGlebas(gs => gs.map(g => {
+      if (g.id === targetGlebaId) {
+        return {
+          ...g,
+          vertices: [...g.vertices, v]
+        };
+      }
+      return g;
+    }));
+    aviso(`Ponto "${v.nome}" movido.`);
   }
 
   async function executarDivisaoGleba() {
@@ -10727,15 +10769,32 @@ export default function EditorPage() {
                   <SecaoTitulo>Lista de Vértices ({vertices.length})</SecaoTitulo>
                   <div className="flex items-center gap-3">
                     {vertices.length > 0 && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setBatchRenomearAberto(true)}
-                        className="h-7 text-xs font-bold border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 flex items-center gap-1.5"
-                      >
-                        <ListOrdered className="size-3.5" /> Renomear em Lote (SIGEF)
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            snap();
+                            const ordenados = iniciarDoNorteHorario(vertices);
+                            setVertices(ordenados);
+                            aviso('Polígono ordenado no sentido horário a partir do vértice mais ao Norte.');
+                          }}
+                          className="h-7 text-xs font-bold border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 flex items-center gap-1.5"
+                          title="Ordenar no sentido horário a partir do norte"
+                        >
+                          <RefreshCw className="size-3.5" /> Ordenar Horário
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setBatchRenomearAberto(true)}
+                          className="h-7 text-xs font-bold border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 flex items-center gap-1.5"
+                        >
+                          <ListOrdered className="size-3.5" /> Renomear em Lote
+                        </Button>
+                      </div>
                     )}
                     <div className="text-xs text-muted-foreground font-mono">
                       Perímetro: {res ? res.perimetro.toFixed(2) : '0.00'} m | Área: {res ? res.areaHa.toFixed(4) : '0.0000'} ha
@@ -10798,42 +10857,178 @@ export default function EditorPage() {
                       </Button>
                     </div>
 
-                    <div className="border rounded-xl overflow-hidden shadow-xs bg-background max-h-[380px] overflow-y-auto scroll-fino">
+                    <div className="border rounded-xl overflow-hidden shadow-xs bg-background max-h-[320px] overflow-y-auto scroll-fino">
                       <table className="w-full text-left text-xs font-mono">
                         <thead className="bg-muted/50 border-b text-[10px] uppercase font-bold text-muted-foreground sticky top-0 bg-muted z-10">
                           <tr>
-                          <th className="p-2 text-center w-10">#</th>
-                          <th className="p-2">Vértice</th>
-                          <th className="p-2">Leste (E)</th>
-                          <th className="p-2">Norte (N)</th>
-                          <th className="p-2">Altitude (Z)</th>
-                          <th className="p-2">Tipo</th>
-                          <th className="p-2">Método</th>
-                          <th className="p-2">Limite</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y text-[11px]">
-                        {vertices.map((v, i) => (
-                          <tr key={v.id || i} className="hover:bg-muted/30 transition-colors">
-                            <td className="p-2 text-center font-bold text-muted-foreground">{i + 1}</td>
-                            <td className="p-2 font-black text-emerald-600 dark:text-emerald-400">{v.nome}</td>
-                            <td className="p-2">{v.leste.toFixed(3)}</td>
-                            <td className="p-2">{v.norte.toFixed(3)}</td>
-                            <td className="p-2">{Number.isFinite(v.elevacao) ? v.elevacao.toFixed(2) : '0.00'}</td>
-                            <td className="p-2"><span className="px-1.5 py-0.5 rounded bg-muted font-bold text-[9px]">{v.tipo || 'P'}</span></td>
-                            <td className="p-2 text-muted-foreground text-[10px]">{v.metodo || '—'}</td>
-                            <td className="p-2 text-muted-foreground text-[10px]" title={obterTipoLimiteEfetivo(v, tecnico?.tipoLimite)}>
-                              {(() => {
-                                const lim = obterTipoLimiteEfetivo(v, tecnico?.tipoLimite);
-                                const repLabel = v.representacao && REPRES_LABEL[v.representacao] ? REPRES_LABEL[v.representacao] : null;
-                                return repLabel ? `${repLabel} (${lim})` : lim;
-                              })()}
-                            </td>
+                            <th className="p-2 text-center w-10">#</th>
+                            <th className="p-2">Vértice</th>
+                            <th className="p-2">Leste (E)</th>
+                            <th className="p-2">Norte (N)</th>
+                            <th className="p-2">Altitude (Z)</th>
+                            <th className="p-2">Tipo</th>
+                            <th className="p-2">Limite</th>
+                            <th className="p-2 text-right pr-4 w-40">Ações</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y text-[11px]">
+                          {vertices.map((v, i) => (
+                            <tr key={v.id || i} className="hover:bg-muted/30 transition-colors">
+                              <td className="p-2 text-center font-bold text-muted-foreground">{i + 1}</td>
+                              <td className="p-2 font-black text-emerald-600 dark:text-emerald-400">{v.nome}</td>
+                              <td className="p-2">{v.leste.toFixed(3)}</td>
+                              <td className="p-2">{v.norte.toFixed(3)}</td>
+                              <td className="p-2">{Number.isFinite(v.elevacao) ? v.elevacao.toFixed(2) : '0.00'}</td>
+                              <td className="p-2"><span className="px-1.5 py-0.5 rounded bg-muted font-bold text-[9px]">{v.tipo || 'P'}</span></td>
+                              <td className="p-2 text-muted-foreground text-[10px]" title={obterTipoLimiteEfetivo(v, tecnico?.tipoLimite)}>
+                                {(() => {
+                                  const lim = obterTipoLimiteEfetivo(v, tecnico?.tipoLimite);
+                                  const repLabel = v.representacao && REPRES_LABEL[v.representacao] ? REPRES_LABEL[v.representacao] : null;
+                                  return repLabel ? `${repLabel} (${lim})` : lim;
+                                })()}
+                              </td>
+                              <td className="p-2 text-right pr-4">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                    onClick={() => moverVerticePosicao(i, 'subir')}
+                                    disabled={i === 0}
+                                    title="Subir na sequência"
+                                  >
+                                    <ChevronUp className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                    onClick={() => moverVerticePosicao(i, 'descer')}
+                                    disabled={i === vertices.length - 1}
+                                    title="Descer na sequência"
+                                  >
+                                    <ChevronDown className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                                    onClick={() => ignorarVertice(v.id)}
+                                    title="Ignorar (Tirar do Polígono)"
+                                  >
+                                    <EyeOff className="size-3.5" />
+                                  </Button>
+                                  
+                                  {sincronizarGlebas().length > 1 && (
+                                    <select
+                                      className="h-6 text-[10px] bg-background border rounded px-1 max-w-[75px]"
+                                      value={glebaAtivaId}
+                                      onChange={(e) => {
+                                        const targetId = e.target.value;
+                                        if (targetId && targetId !== glebaAtivaId) {
+                                          moverVerticeParaGleba(v.id, targetId);
+                                        }
+                                      }}
+                                      title="Mover para outra Gleba"
+                                    >
+                                      <option value={glebaAtivaId}>Gleba...</option>
+                                      {sincronizarGlebas().filter(g => g.id !== glebaAtivaId).map(g => (
+                                        <option key={g.id} value={g.id}>{g.denominacao}</option>
+                                      ))}
+                                    </select>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Tabela de Pontos Soltos / Ignorados */}
+                    {verticesIgnorados.length > 0 && (
+                      <div className="space-y-2 mt-4 pt-3 border-t">
+                        <div className="text-xs font-black uppercase tracking-wider text-amber-600 flex items-center gap-1.5 font-bold">
+                          <EyeOff className="size-3.5" />
+                          <span>Pontos Soltos / Ignorados ({verticesIgnorados.length})</span>
+                        </div>
+                        <div className="border rounded-xl overflow-hidden shadow-xs bg-background max-h-[220px] overflow-y-auto scroll-fino">
+                          <table className="w-full text-left text-xs font-mono">
+                            <thead className="bg-muted/50 border-b text-[10px] uppercase font-bold text-muted-foreground sticky top-0 bg-muted z-10">
+                              <tr>
+                                <th className="p-2 text-center w-10">#</th>
+                                <th className="p-2">Ponto</th>
+                                <th className="p-2">Leste (E)</th>
+                                <th className="p-2">Norte (N)</th>
+                                <th className="p-2">Altitude (Z)</th>
+                                <th className="p-2 text-right pr-4 w-40">Ações</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y text-[11px]">
+                              {verticesIgnorados.map((v, i) => (
+                                <tr key={v.id || i} className="hover:bg-muted/30 transition-colors">
+                                  <td className="p-2 text-center font-bold text-muted-foreground">{i + 1}</td>
+                                  <td className="p-2 font-black text-amber-600">{v.nome}</td>
+                                  <td className="p-2">{v.leste.toFixed(3)}</td>
+                                  <td className="p-2">{v.norte.toFixed(3)}</td>
+                                  <td className="p-2">{Number.isFinite(v.elevacao) ? v.elevacao.toFixed(2) : '0.00'}</td>
+                                  <td className="p-2 text-right pr-4">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        className="h-6 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1"
+                                        onClick={() => considerarVertice(v.id)}
+                                        title="Considerar (Adicionar ao Polígono)"
+                                      >
+                                        <Plus className="size-3" /> Considerar
+                                      </Button>
+
+                                      {sincronizarGlebas().length > 1 && (
+                                        <select
+                                          className="h-6 text-[10px] bg-background border rounded px-1 max-w-[75px]"
+                                          value=""
+                                          onChange={(e) => {
+                                            const targetId = e.target.value;
+                                            if (targetId) {
+                                              moverVerticeParaGleba(v.id, targetId);
+                                            }
+                                          }}
+                                          title="Mover para outra Gleba"
+                                        >
+                                          <option value="">Mover...</option>
+                                          {sincronizarGlebas().map(g => (
+                                            <option key={g.id} value={g.id}>{g.denominacao}</option>
+                                          ))}
+                                        </select>
+                                      )}
+
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                        onClick={() => {
+                                          snap();
+                                          setVerticesIgnorados(xs => xs.filter(x => x.id !== v.id));
+                                          aviso(`Ponto ${v.nome} excluído.`);
+                                        }}
+                                        title="Excluir Ponto"
+                                      >
+                                        <Trash2 className="size-3.5" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
