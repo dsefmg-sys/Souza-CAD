@@ -10385,6 +10385,28 @@ export default function EditorPage() {
                 );
               })()}
 
+              {/* Botão Alternador de Modo de Rótulos na Planta (Modo A: Chamada | Modo B: Direto com Fundo Sólido) */}
+              {vista === 'planta' && (
+                <button type="button"
+                  onClick={() => {
+                    const proximo = plantaConfig.modoRotulosPlanta === 'proximo' ? 'chamada' : 'proximo';
+                    setPlantaConfig((prev) => ({ ...prev, modoRotulosPlanta: proximo }));
+                    aviso(`Rótulos da Planta: Modo ${proximo === 'proximo' ? 'B (Direto com fundo sólido sobre vértices)' : 'A (Linhas de chamada afastadas)'}`);
+                  }}
+                  title={
+                    plantaConfig.modoRotulosPlanta === 'proximo'
+                      ? "Modo de Rótulos na Planta: B (Direto com fundo sólido sobre os vértices). Clique para alternar para Modo A (Linhas de chamada)"
+                      : "Modo de Rótulos na Planta: A (Linhas de chamada afastadas). Clique para alternar para Modo B (Direto com fundo sólido)"
+                  }
+                  className={`flex h-7 w-7 items-center justify-center rounded-full border shadow-xs transition-all shrink-0 font-black text-xs ${
+                    plantaConfig.modoRotulosPlanta === 'proximo'
+                      ? 'border-amber-500/60 bg-amber-500/20 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/40 shadow-xs'
+                      : 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                  }`}>
+                  {plantaConfig.modoRotulosPlanta === 'proximo' ? 'B' : 'A'}
+                </button>
+              )}
+
               {/* Botão Imprimir Planta (apenas ícone de impressora) */}
               <button type="button"
                 onClick={() => imprimirPlanta()}

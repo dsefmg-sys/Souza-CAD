@@ -497,6 +497,7 @@ export interface PlantaConfig {
   mostrarDivisaConf?: boolean;    // padrão true: tique de troca de confrontante nos marcos M
   mostrarVerticesVizinho?: boolean; // padrão true: pontos dos imóveis vizinhos certificados importados
   estiloVertice?: 'sigef' | 'convencional' | 'v'; // rótulo do vértice: código SIGEF (padrão), P1, P2, P3… ou V1, V2, V3…
+  modoRotulosPlanta?: 'chamada' | 'proximo'; // Modo A (chamada com linha tracejada) ou Modo B (direto com fundo sólido sobre vértices)
   mostrarSituacao?: boolean;   // padrão true (quando há imagem de situação)
   fonteRotulos?: number;       // tamanho da fonte dos rótulos (vértices/confrontantes), padrão 8.5
   escalaTextos?: number;       // multiplicador de TODOS os textos da planta (1 = padrão)

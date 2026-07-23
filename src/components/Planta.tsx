@@ -169,6 +169,7 @@ function Ted(props: {
   onMenu?: (id: string, atual: string, x: number, y: number) => void;
   onDragStart?: (id: string, e: ReactPointerEvent) => void;
   halo?: boolean;
+  fundoBranco?: boolean;
   editando?: boolean;
   onTerminarEditar?: (id: string, novoTexto: string) => void;
   onStartEdit?: (id: string, atual: string) => void;
@@ -177,7 +178,7 @@ function Ted(props: {
   onTextoPatch?: (id: string, patch: { escala?: number; texto?: string; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }) => void;
   estatico?: boolean;
 }) {
-  const { id, x, y, base, size, bold, anchor = 'start', fill = '#000', slice, ov, ed, onMenu, onDragStart, halo = false, editando = false, onTerminarEditar, onStartEdit, selecionadoId, onSelect, onTextoPatch, estatico = false } = props;
+  const { id, x, y, base, size, bold, anchor = 'start', fill = '#000', slice, ov, ed, onMenu, onDragStart, halo = false, fundoBranco = false, editando = false, onTerminarEditar, onStartEdit, selecionadoId, onSelect, onTextoPatch, estatico = false } = props;
   const conteudo = (ov?.texto !== undefined && ov?.texto !== null && ov.texto.trim() !== '') ? ov.texto : base;
   const texto = slice ? conteudo.slice(0, slice) : conteudo;
   const fz = +(size * (ov?.escala ?? 1)).toFixed(2);
@@ -286,15 +287,16 @@ function Ted(props: {
         fillOpacity={0.001}
         style={{ pointerEvents: 'all', cursor: ed ? 'move' : undefined }}
       />
-      {ov?.fundoBranco && (
+      {(ov?.fundoBranco || fundoBranco) && (
         <rect
-          x={anchor === 'middle' ? posX - textW / 2 - 5 : anchor === 'end' ? posX - textW - 5 : posX - 5}
-          y={posY - fz * 0.9}
-          width={textW + 10}
-          height={textH + 4}
+          x={anchor === 'middle' ? posX - textW / 2 - 3.5 : anchor === 'end' ? posX - textW - 3.5 : posX - 3.5}
+          y={posY - fz * 0.85}
+          width={textW + 7}
+          height={textH + 3}
           fill="#ffffff"
-          stroke={isSelected ? '#2563eb' : 'none'}
-          strokeWidth={0.8}
+          fillOpacity={1}
+          stroke={isSelected ? '#2563eb' : '#94a3b8'}
+          strokeWidth={isSelected ? 1 : 0.5}
           rx={2}
         />
       )}
@@ -2448,25 +2450,42 @@ export default function Planta({
               )}
             </g>
             {config.mostrarRotulosPlanta !== false && (() => {
-              // linha-guia tracejada ligando o rótulo ao seu vértice (deixa claro de quem é o nome).
-              // Conecta no lado do rótulo (esquerdo OU direito) mais próximo do vértice — o texto é
-              // ancorado à esquerda (x), então o canto direito fica em x + largura do texto.
+              const isModoB = config.modoRotulosPlanta === 'proximo';
+              if (isModoB) return null; // Modo B não usa linha de chamada
               const ovR = getOverride(`vert.${v.id}`);
-              const lxr = x + (ovR.dx ?? 0), lyr = y + (ovR.dy ?? 0);
+              const lxr = (ovR?.dx != null) ? vx + ovR.dx : x + (ovR.dx ?? 0);
+              const lyr = (ovR?.dy != null) ? vy + ovR.dy : y + (ovR.dy ?? 0);
               const rot = nomeVertice(v, i);
               const fzr = Math.max(6, fonteRot - 0.5) * (ovR.escala ?? 1);
               const w = Math.max(fzr, rot.length * fzr * 0.6);
               const leftX = lxr, rightX = lxr + w;
-              const midY = lyr - fzr * 0.35; // meio vertical do texto (baseline fica em lyr)
+              const midY = lyr - fzr * 0.35;
               const alvoX = Math.abs(vx - leftX) <= Math.abs(vx - rightX) ? leftX : rightX;
               const dGuia = Math.hypot(alvoX - vx, midY - vy);
               if (dGuia < 12) return null;
               const ux = (alvoX - vx) / dGuia, uy = (midY - vy) / dGuia;
               return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={alvoX - ux * 3} y2={midY - uy * 3} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
             })()}
-            {config.mostrarRotulosPlanta !== false && (
-              <Ted x={x} y={y} base={nomeVertice(v, i)} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
-            )}
+            {config.mostrarRotulosPlanta !== false && (() => {
+              const isModoB = config.modoRotulosPlanta === 'proximo';
+              const ovR = getOverride(`vert.${v.id}`);
+              const hasCustomDrag = ovR?.dx != null || ovR?.dy != null;
+              const posX = hasCustomDrag ? vx : (isModoB ? vx + 4 : x);
+              const posY = hasCustomDrag ? vy : (isModoB ? vy - 4 : y);
+              const fz = isModoB ? Math.max(5, fonteRot - 1.5) : Math.max(6, fonteRot - 0.5);
+              return (
+                <Ted
+                  x={posX}
+                  y={posY}
+                  base={nomeVertice(v, i)}
+                  size={fz}
+                  fill="#000"
+                  fundoBranco={isModoB}
+                  halo={!isModoB}
+                  {...tProps(`vert.${v.id}`)}
+                />
+              );
+            })()}
             {vsel && (
               <g style={{ pointerEvents: 'all' }} transform={`translate(${vx}, ${vy - 52})`}>
                 <rect x={-78} y={-30} width={156} height={62} rx={8} fill="#ffffff" fillOpacity={0.98} stroke="#94a3b8" strokeWidth={1} />
