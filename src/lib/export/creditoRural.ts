@@ -2,17 +2,36 @@ import { jsPDF } from 'jspdf';
 import { ImovelData, EscritorioData, TecnicoData } from '../topo/types';
 import { aplicarPapelTimbrado, cabecalhoEscritorio, statusFicticio } from './financeiro';
 
+export interface ItemFinanciado {
+  id: string;
+  descricao: string;
+  categoria: string;
+  quantidade: number;
+  valorUnitario: number;
+  valorTotal: number;
+}
+
 export interface DadosCredito {
   aptidaoSolo: string;
   culturaPrincipal: string;
   capacidadePastagem: string;
   finalidadeCredito: string;
+  linhaCredito?: string;
+  agenteFinanceiro?: string;
+  parceiroCorrespondente?: string;
+  conselhoRt?: string;
+  tituloProfissionalRt?: string;
+  garantiaProposta?: string;
+  taxaJurosAnual?: number;
+  carenciaMeses?: number;
+  prazoAnos?: number;
   cronogramaEtapas: Array<{
     id: string;
     etapa: string;
     mes: number;
     valor: number;
   }>;
+  itensFinanciados?: ItemFinanciado[];
 }
 
 export function gerarPdfLaudoAptidao(
@@ -97,7 +116,7 @@ export function gerarPdfLaudoAptidao(
   doc.setFontSize(8.5);
   doc.text('RESPONSÁVEL TÉCNICO', larg / 4, y + 4, { align: 'center' });
   doc.text(tecnico.nome || 'RT', larg / 4, y + 8, { align: 'center' });
-  doc.text(`${tecnico.conselho || 'CFTA'}: ${tecnico.cft || 'Reg. não informado'}`, larg / 4, y + 12, { align: 'center' });
+  doc.text(`${dados.conselhoRt || tecnico.conselho || 'CFTA'}: ${tecnico.cft || 'Reg. não informado'}`, larg / 4, y + 12, { align: 'center' });
 
   doc.text('PROPRIETÁRIO / PROPONENTE', (larg * 3) / 4, y + 4, { align: 'center' });
   doc.text(imovel.proprietario || 'Proponente', (larg * 3) / 4, y + 8, { align: 'center' });
@@ -193,7 +212,7 @@ export function gerarPdfCronogramaFinanceiro(
   doc.setFontSize(8.5);
   doc.text('RESPONSÁVEL TÉCNICO', larg / 4, y + 4, { align: 'center' });
   doc.text(tecnico.nome || 'RT', larg / 4, y + 8, { align: 'center' });
-  doc.text(`${tecnico.conselho || 'CFTA'}: ${tecnico.cft || 'Reg. não informado'}`, larg / 4, y + 12, { align: 'center' });
+  doc.text(`${dados.conselhoRt || tecnico.conselho || 'CFTA'}: ${tecnico.cft || 'Reg. não informado'}`, larg / 4, y + 12, { align: 'center' });
 
   doc.text('PROPRIETÁRIO / PROPONENTE', (larg * 3) / 4, y + 4, { align: 'center' });
   doc.text(imovel.proprietario || 'Proponente', (larg * 3) / 4, y + 8, { align: 'center' });
@@ -201,4 +220,256 @@ export function gerarPdfCronogramaFinanceiro(
 
   aplicarPapelTimbrado(doc, esc || undefined);
   return doc;
+}
+
+/** Gerador Word (.docx) do Laudo de Aptidão Agrícola */
+export async function gerarDocxLaudoAptidao(
+  imovel: ImovelData,
+  esc: EscritorioData | null,
+  tecnico: TecnicoData,
+  dados: DadosCredito
+): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = await import('docx');
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: 'LAUDO DE APTIDÃO AGRÍCOLA & SOLO', bold: true, size: 28, color: '059669' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '1. DADOS DO IMÓVEL AVALIADO', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Denominação: ', bold: true }),
+            new TextRun({ text: imovel.denominacao || 'Não informada' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Localização / Município: ', bold: true }),
+            new TextRun({ text: `${imovel.municipio || 'Não informada'}-${imovel.uf || ''}` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Área Total: ', bold: true }),
+            new TextRun({ text: `${(imovel.areaHa || 0).toFixed(4)} ha (${((imovel.areaHa || 0) * 10000).toLocaleString('pt-BR')} m²)` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Matrícula: ', bold: true }),
+            new TextRun({ text: imovel.matricula || 'Ausente' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '2. CARACTERIZAÇÃO DO SOLO & APTIDÃO AGRÍCOLA', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Aptidão / Classe de Solo: ', bold: true }),
+            new TextRun({ text: dados.aptidaoSolo || 'Não informada' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Cultura Principal Recomendada: ', bold: true }),
+            new TextRun({ text: dados.culturaPrincipal || 'Não informada' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Capacidade de Suporte de Pastagens: ', bold: true }),
+            new TextRun({ text: dados.capacidadePastagem || 'Não informada' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Finalidade do Crédito: ', bold: true }),
+            new TextRun({ text: dados.finalidadeCredito || 'Custeio / Investimento' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '3. DIAGNÓSTICO E CONCLUSÃO TÉCNICA', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `O imóvel rural denominado "${imovel.denominacao || 'Sem nome'}" apresenta solo caracterizado como ${dados.aptidaoSolo || 'Classe de Solo não especificada'}, com aptidão agrícola favorável para a cultura de ${dados.culturaPrincipal || 'cultura não definida'}. Os parâmetros técnicos levantados in loco indicam viabilidade para o recebimento do crédito rural pretendido para ${dados.finalidadeCredito || 'operações de custeio/investimento'}, estando o imóvel em conformidade com as exigências técnicas bancárias locais.`
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: '____________________________________________________' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: tecnico.nome || 'Nome do Profissional', bold: true }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `${dados.conselhoRt || tecnico.conselho || 'CFTA'}: ${tecnico.cft || ''} / ${dados.tituloProfissionalRt || 'Responsável Técnico'}` }),
+          ],
+        }),
+      ],
+    }],
+  });
+
+  return await Packer.toBlob(doc);
+}
+
+/** Gerador Word (.docx) do Projeto Técnico de Crédito Rural & Carta Consulta */
+export async function gerarDocxProjetoCreditoRural(
+  imovel: ImovelData,
+  esc: EscritorioData | null,
+  tecnico: TecnicoData,
+  dados: DadosCredito
+): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun, AlignmentType } = await import('docx');
+
+  const total = (dados.cronogramaEtapas || []).reduce((a, b) => a + (b.valor || 0), 0);
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: 'PROJETO TÉCNICO DE FINANCIAMENTO RURAL', bold: true, size: 28, color: '059669' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `Linha de Crédito: ${dados.linhaCredito || 'PRONAMP / PRONAF'} | Instituição: ${dados.agenteFinanceiro || 'Banco do Brasil'}`, bold: true, size: 20 }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '1. DADOS DA PROPOSTA & PROPONENTE', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Proponente / Beneficiário: ', bold: true }),
+            new TextRun({ text: (imovel.proprietario || 'Não informado').toUpperCase() }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'CPF/CNPJ: ', bold: true }),
+            new TextRun({ text: imovel.cpfProprietario || '___' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Propriedade Beneficiada: ', bold: true }),
+            new TextRun({ text: `${imovel.denominacao || 'Gleba Rural'} (${(imovel.areaHa || 0).toFixed(4)} ha)` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Parceiro / Elaborador Técnico: ', bold: true }),
+            new TextRun({ text: dados.parceiroCorrespondente || esc?.nome || 'Consultoria Técnica Agrícola' }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '2. CONDIÇÕES FINANCEIRAS DA OPERAÇÃO', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Valor Total Solicitado: ', bold: true }),
+            new TextRun({ text: `R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Garantia Oferecida: ', bold: true }),
+            new TextRun({ text: dados.garantiaProposta || 'Penhor Agrícola / Hipoteca do Imóvel' }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Taxa de Juros Anual: ', bold: true }),
+            new TextRun({ text: `${dados.taxaJurosAnual || 7.5}% a.a.` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Carência Solicitada: ', bold: true }),
+            new TextRun({ text: `${dados.carenciaMeses || 12} meses` }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Prazo Total de Pagamento: ', bold: true }),
+            new TextRun({ text: `${dados.prazoAnos || 5} anos` }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: '3. JUSTIFICATIVA E IMPACTO PRODUTIVO', bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `O presente projeto visa a concessão de crédito rural para a finalidade de ${dados.finalidadeCredito || 'modernização das atividades produtivas'}, promovendo o incremento de produtividade da cultura de ${dados.culturaPrincipal || 'produção agrícola'}, a sustentabilidade socioambiental do imóvel e a geração de caixa necessária para o cumprimento integral dos compromissos financeiros.`
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: '____________________________________________________' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: tecnico.nome || 'Responsável Técnico', bold: true }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `${dados.conselhoRt || tecnico.conselho || 'CFTA'}: ${tecnico.cft || ''} / ${dados.tituloProfissionalRt || 'Técnico em Agropecuária'}` }),
+          ],
+        }),
+      ],
+    }],
+  });
+
+  return await Packer.toBlob(doc);
 }

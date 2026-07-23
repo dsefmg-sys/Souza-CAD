@@ -437,11 +437,28 @@ export interface ImovelData {
     culturaPrincipal?: string;
     capacidadePastagem?: string;
     finalidadeCredito?: string;
+    linhaCredito?: string;
+    agenteFinanceiro?: string;
+    parceiroCorrespondente?: string;
+    conselhoRt?: string;
+    tituloProfissionalRt?: string;
+    garantiaProposta?: string;
+    taxaJurosAnual?: number;
+    carenciaMeses?: number;
+    prazoAnos?: number;
     cronogramaEtapas?: Array<{
       id: string;
       etapa: string;
       mes: number;
       valor: number;
+    }>;
+    itensFinanciados?: Array<{
+      id: string;
+      descricao: string;
+      categoria: string;
+      quantidade: number;
+      valorUnitario: number;
+      valorTotal: number;
     }>;
   };
   // Padrão do memorial descritivo. 'incra' (padrão nacional SIGEF) ou 'intermat' (variante do
