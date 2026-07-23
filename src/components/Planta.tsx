@@ -729,11 +729,13 @@ export default function Planta({
     let vizinhos = 0;
     for (let k = 0; k < nV; k++) { if (k === i) continue; if (Math.hypot(ptsScr[k].x - vx, ptsScr[k].y - vy) < raioDens) vizinhos++; }
     const off = offBase + Math.min(fzRot * 10, vizinhos * fzRot * 1.8);
-    const offProx = 8.0; // Posição no Modo B: 8px de distância do ponto, próximo sem cobrir o símbolo
+    const offXProx = ox >= 0 ? 6 : -6;
+    const offYProx = oy > 0 ? 10 : -4;
+    const anchorProx: 'start' | 'end' = ox >= 0 ? 'start' : 'end';
     return {
       v, i,
       x: vx + ox * off, y: vy + oy * off,
-      xProximo: vx + ox * offProx, yProximo: vy + oy * offProx,
+      xProximo: vx + offXProx, yProximo: vy + offYProx, anchorProximo: anchorProx,
       hasPos: false
     };
   });
@@ -772,7 +774,11 @@ export default function Planta({
     }
   }
 
-  const rotuloVert = initialRotuloVert.map((r) => ({ v: r.v, i: r.i, x: r.x, y: r.y, xProximo: r.xProximo, yProximo: r.yProximo }));
+  const rotuloVert = initialRotuloVert.map((r) => ({
+    v: r.v, i: r.i,
+    x: r.x, y: r.y,
+    xProximo: r.xProximo, yProximo: r.yProximo, anchorProximo: r.anchorProximo
+  }));
   // rótulo exibido do vértice: código SIGEF (padrão) ou P1, P2, P3… (topografia convencional)
   const nomeVertice = (v: Vertex, i: number) => {
     if (config.estiloVertice === 'v') return `V${i + 1}`;
@@ -2446,7 +2452,7 @@ export default function Planta({
       })()}
 
       {/* vértices + códigos (rótulo na posição arrastada, se houver; editável) */}
-      {rotuloVert.map(({ v, i, x, y, xProximo, yProximo }) => {
+      {rotuloVert.map(({ v, i, x, y, xProximo, yProximo, anchorProximo }) => {
         const vx = sx(v.leste), vy = sy(v.norte);
         const vsel = editavel && selecionadoId === `vsel.${v.id}`;
         return (
@@ -2492,6 +2498,7 @@ export default function Planta({
               const hasCustomDrag = ovR?.dx != null || ovR?.dy != null;
               const posX = hasCustomDrag ? vx : (isModoB ? xProximo : x);
               const posY = hasCustomDrag ? vy : (isModoB ? yProximo : y);
+              const anchorVal = hasCustomDrag ? 'start' : (isModoB ? anchorProximo : 'start');
               // Modo B reduz exatamente 20% (-20%) em relação ao tamanho base de Modo A (fonteRot - 0.5)
               const fz = isModoB ? Math.max(5, (fonteRot - 0.5) * 0.8) : Math.max(6, fonteRot - 0.5);
               return (
@@ -2500,6 +2507,7 @@ export default function Planta({
                   y={posY}
                   base={nomeVertice(v, i)}
                   size={fz}
+                  anchor={anchorVal}
                   fill="#000"
                   fundoBranco={isModoB}
                   halo={!isModoB}
