@@ -471,16 +471,22 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const ativos = useMemo(() => perfis.filter((p) => (agora - (p.ultimoAcessoEm ?? p.ultimoProjetoEm ?? 0)) < DIAS_ATIVO), [perfis, agora]);
   const totalProjetos = useMemo(() => perfis.reduce((sum, p) => sum + (p.totalProjetos ?? 0), 0), [perfis]);
 
-  // Filtrar perfis pela busca
+  const [filtroCRM, setFiltroCRM] = useState<'todos' | 'pago' | 'atrasado' | 'isento'>('todos');
+
+  // Filtrar perfis pela busca e pelo status do CRM
   const perfisFiltrados = useMemo(() => {
-    if (!busca.trim()) return perfis;
+    let lista = perfis;
+    if (filtroCRM !== 'todos') {
+      lista = lista.filter((p) => (p.statusPagamento || 'atrasado') === filtroCRM);
+    }
+    if (!busca.trim()) return lista;
     const q = busca.toLowerCase();
-    return perfis.filter((p) =>
+    return lista.filter((p) =>
       (p.empresaNome || '').toLowerCase().includes(q) ||
       (p.rtNome || '').toLowerCase().includes(q) ||
       (p.email || '').toLowerCase().includes(q)
     );
-  }, [perfis, busca]);
+  }, [perfis, busca, filtroCRM]);
 
   // Cálculos REAIS de Faturamento
   const faturamentoReal = useMemo(() => {
@@ -1092,14 +1098,46 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
 
         {/* ─── Tabela CRM e Faturamento ─── */}
         <div className="flex-1 border border-zinc-800 rounded-xl bg-zinc-900/20 shadow-lg overflow-hidden flex flex-col">
-          <div className="bg-zinc-900/80 px-5 py-3 border-b border-zinc-800/80 flex shrink-0 justify-between items-center gap-4">
+          <div className="bg-zinc-900/80 px-5 py-3 border-b border-zinc-800/80 flex shrink-0 justify-between items-center gap-4 flex-wrap">
             <div className="flex flex-col text-left">
               <span className="text-sm font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-2">
-                <Sparkles className="size-4" /> CRM & Faturamento ({perfisFiltrados.length}{busca ? ` de ${perfis.length}` : ''})
+                <Sparkles className="size-4" /> CRM & Faturamento ({perfisFiltrados.length}{busca || filtroCRM !== 'todos' ? ` de ${perfis.length}` : ''})
               </span>
-              <span className="text-xs text-zinc-400 mt-0.5">Os dados editados são salvos automaticamente ao sair do campo.</span>
+              <span className="text-xs text-zinc-400 mt-0.5">Gestão de assinaturas, renovação de mensalidade e liberação de módulos extras.</span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* Filtros rápidos do CRM */}
+              <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setFiltroCRM('todos')}
+                  className={`px-2.5 py-1 rounded font-bold transition-colors ${filtroCRM === 'todos' ? 'bg-amber-500 text-zinc-950' : 'text-zinc-400 hover:text-white'}`}
+                >
+                  Todos ({perfis.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroCRM('pago')}
+                  className={`px-2.5 py-1 rounded font-bold transition-colors ${filtroCRM === 'pago' ? 'bg-emerald-600 text-white' : 'text-emerald-400 hover:bg-emerald-950/40'}`}
+                >
+                  Renovados / Pagos ({perfis.filter(p => (p.statusPagamento || 'atrasado') === 'pago').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroCRM('atrasado')}
+                  className={`px-2.5 py-1 rounded font-bold transition-colors ${filtroCRM === 'atrasado' ? 'bg-red-600 text-white' : 'text-red-400 hover:bg-red-950/40'}`}
+                >
+                  Pendentes / Atrasados ({perfis.filter(p => (p.statusPagamento || 'atrasado') === 'atrasado').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroCRM('isento')}
+                  className={`px-2.5 py-1 rounded font-bold transition-colors ${filtroCRM === 'isento' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
+                >
+                  Isentos ({perfis.filter(p => p.statusPagamento === 'isento').length})
+                </button>
+              </div>
+
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-zinc-500" />
                 <input
@@ -1107,10 +1145,9 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                   placeholder="Buscar cliente..."
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  className="h-9 w-52 rounded-lg border border-zinc-800 bg-zinc-950 pl-8 pr-3 text-xs text-white placeholder:text-zinc-700 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
+                  className="h-9 w-44 rounded-lg border border-zinc-800 bg-zinc-950 pl-8 pr-3 text-xs text-white placeholder:text-zinc-700 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
                 />
               </div>
-              <span className="text-xs text-emerald-400 bg-emerald-950/30 border border-emerald-800/30 px-2.5 py-1 rounded-full font-bold whitespace-nowrap">CRM Ativo</span>
             </div>
           </div>
           <div className="flex-1 overflow-auto">
@@ -1444,6 +1481,24 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                                   className="rounded text-zinc-950 focus:ring-emerald-500 size-3 accent-emerald-500 cursor-pointer"
                                 />
                                 <span>Cre</span>
+                              </label>
+                              <label className="flex items-center gap-0.5 cursor-pointer text-zinc-400 hover:text-white" title="Módulo Estúdio 3D Terreno">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.licencaEstudio3d}
+                                  onChange={(e) => atualizarClienteCRM(p.uid, { licencaEstudio3d: e.target.checked })}
+                                  className="rounded text-zinc-950 focus:ring-emerald-500 size-3 accent-emerald-500 cursor-pointer"
+                                />
+                                <span>3D</span>
+                              </label>
+                              <label className="flex items-center gap-0.5 cursor-pointer text-zinc-400 hover:text-white" title="Módulo Extração por IA">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.licencaExtrairIa}
+                                  onChange={(e) => atualizarClienteCRM(p.uid, { licencaExtrairIa: e.target.checked })}
+                                  className="rounded text-zinc-950 focus:ring-emerald-500 size-3 accent-emerald-500 cursor-pointer"
+                                />
+                                <span>IA</span>
                               </label>
                             </div>
                           </td>

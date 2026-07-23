@@ -41,6 +41,8 @@ export interface PerfilUso {
   licencaReurb?: boolean;
   licencaLoteamento?: boolean;
   licencaCredito?: boolean;
+  licencaEstudio3d?: boolean;
+  licencaExtrairIa?: boolean;
 }
 
 const CACHE = 'metrica.perfilUso';
