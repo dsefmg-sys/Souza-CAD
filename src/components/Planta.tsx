@@ -409,6 +409,7 @@ export default function Planta({
   const dragRef = useRef<null | { kind: 'objPonto' | 'objCorpo' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf' | 'selecao' | 'textoPlanta'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number; snapped?: boolean; lastGeo?: { lat: number; lon: number } }>(null);
   const ultimoCliqueRef = useRef<{ tempo: number; x: number; y: number } | null>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
   // Arraste suave: em vez de atualizar o estado a cada micro-movimento do mouse (que redesenha o
   // SVG inteiro e trava), juntamos as atualizações e aplicamos no máximo uma por quadro de tela.
   const dragRaf = useRef<number | null>(null);
@@ -1047,9 +1048,12 @@ export default function Planta({
       folhaLast.current = u;
       return;
     }
-    if (folhaLast.current) {
-      const dx = u.x - folhaLast.current.x;
-      const dy = u.y - folhaLast.current.y;
+    if (!dragStart.current && folhaLast.current) {
+      dragStart.current = folhaLast.current;
+    }
+    if (dragStart.current) {
+      const dx = u.x - dragStart.current.x;
+      const dy = u.y - dragStart.current.y;
       
       d.dx = dx;
       d.dy = dy;
@@ -1172,6 +1176,7 @@ export default function Planta({
     }
     dragRef.current = null;
     folhaLast.current = null;
+    dragStart.current = null;
     setDragTemp(null);
     try { svgRef.current?.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
   }
