@@ -62,6 +62,7 @@ interface Props {
   mostrarDivisaConf?: boolean;
   onAjustarDivisaConf?: (id: string, az: number, len: number) => void;
   estiloVertice?: 'sigef' | 'convencional' | 'v';
+  modoRotulosPlanta?: 'chamada' | 'proximo' | 'direto';
   objetoSelId?: string | null;
   onMover: (id: string, lat: number, lon: number) => void;
   onSelecionar: (id: string) => void;
@@ -218,6 +219,61 @@ function iconeNomeVertice(texto: string, tam: number, dirx = 0, diry = 0) {
     className: 'vertice-nome',
     html: `<div style="font-size:${fs}px;font-weight:700;color:#fff;text-shadow:${halo};white-space:nowrap;width:max-content;display:inline-block">${txt}</div>`,
     iconSize: [1, 1], iconAnchor: [ax, ay],
+  });
+}
+
+function iconeNomeVerticeModoB(texto: string, tam: number, dirx = 0, diry = 0) {
+  const fs = tam && tam > 0 ? tam : 11;
+  const txt = htmlEscape(texto);
+  const { w: estW, h: estH } = estimarCaixaRotulo(texto, tam);
+  const boxW = Math.ceil(estW);
+  const boxH = Math.ceil(estH);
+  const padX = 5;
+  const padY = 3;
+
+  const html = `
+    <div style="position:relative; width:${boxW}px; height:${boxH}px; pointer-events:auto;">
+      <svg width="${boxW + 16}" height="${boxH + 16}" viewBox="-8 -8 ${boxW + 16} ${boxH + 16}" style="position:absolute; left:-8px; top:-8px; overflow:visible;">
+        <polygon points="0,0 ${boxW * 0.25},${boxH} ${boxW * 0.5},${boxH}" fill="#ffffff" stroke="#0f172a" stroke-width="1.2" stroke-linejoin="round" />
+        <rect x="0" y="0" width="${boxW}" height="${boxH}" rx="3.5" ry="3.5" fill="#ffffff" stroke="#0f172a" stroke-width="1.2"/>
+        <text x="${padX}" y="${padY + fs * 0.8}" font-size="${fs}px" font-weight="700" fill="#0f172a" font-family="Arial, sans-serif">${txt}</text>
+      </svg>
+    </div>
+  `;
+
+  return L.divIcon({
+    className: 'vertice-nome-modo-b',
+    html,
+    iconSize: [boxW, boxH],
+    iconAnchor: [dirx >= 0 ? -4 : boxW + 4, diry <= 0 ? boxH + 4 : -4],
+  });
+}
+
+function iconeNomeVerticeModoC(texto: string, tam: number, dirx = 0, diry = 0) {
+  const fs = tam && tam > 0 ? tam : 11;
+  const txt = htmlEscape(texto);
+  const { w: estW, h: estH } = estimarCaixaRotulo(texto, tam);
+  const boxW = Math.ceil(estW);
+  const boxH = Math.ceil(estH);
+  const padX = 5;
+  const padY = 3;
+
+  const html = `
+    <div style="position:relative; width:${boxW}px; height:${boxH}px; pointer-events:auto;">
+      <svg width="${boxW + 16}" height="${boxH + 16}" viewBox="-8 -8 ${boxW + 16} ${boxH + 16}" style="position:absolute; left:-8px; top:-8px; overflow:visible;">
+        <line x1="${dirx >= 0 ? -4 : boxW + 4}" y1="${diry <= 0 ? boxH + 4 : -4}" x2="${boxW / 2}" y2="${boxH / 2}" stroke="#38bdf8" stroke-width="1.2" />
+        <circle cx="${dirx >= 0 ? -4 : boxW + 4}" cy="${diry <= 0 ? boxH + 4 : -4}" r="2" fill="#38bdf8" />
+        <rect x="0" y="0" width="${boxW}" height="${boxH}" rx="4" ry="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2"/>
+        <text x="${padX}" y="${padY + fs * 0.8}" font-size="${fs}px" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">${txt}</text>
+      </svg>
+    </div>
+  `;
+
+  return L.divIcon({
+    className: 'vertice-nome-modo-c',
+    html,
+    iconSize: [boxW, boxH],
+    iconAnchor: [dirx >= 0 ? -4 : boxW + 4, diry <= 0 ? boxH + 4 : -4],
   });
 }
 
@@ -572,6 +628,7 @@ interface MarcadoresRotulosProps {
   mostrarRotulos: boolean;
   zoom: number;
   estiloVertice: 'sigef' | 'convencional' | 'v';
+  modoRotulosPlanta?: 'chamada' | 'proximo' | 'direto';
   tamNomes: number;
   fzZoom: number;
   dirsRotulo: [number, number][];
@@ -587,6 +644,7 @@ function MarcadoresRotulos({
   mostrarRotulos,
   zoom,
   estiloVertice,
+  modoRotulosPlanta,
   tamNomes,
   fzZoom,
   dirsRotulo,
@@ -606,7 +664,7 @@ function MarcadoresRotulos({
       {/* Linhas-guia dos rótulos movidos manualmente: a ponta encosta no CANTO da caixa do rótulo
           mais perto do vértice (não no centro), como uma linha de chamada de CAD. Desenhada ANTES
           dos marcadores pra ficar por baixo do texto. */}
-      {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => {
+      {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && (modoRotulosPlanta || 'chamada') === 'chamada' && validos.map((v, i) => {
         const posRot = v.posRotuloMapa ?? v.posRotulo;
         if (!posRot) return null;
         const texto = formatarNome(v, i);
@@ -623,18 +681,28 @@ function MarcadoresRotulos({
 
       {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => {
         const posRot = v.posRotuloMapa ?? v.posRotulo;
+        const modoRot = modoRotulosPlanta || 'chamada';
+        const txt = formatarNome(v, i);
+        const tam = Math.round(tamNomes * fzZoom);
+        const dx = posRot ? 0 : (dirsRotulo[i]?.[0] ?? 1);
+        const dy = posRot ? 0 : (dirsRotulo[i]?.[1] ?? 0);
+
+        let icon: L.DivIcon;
+        if (modoRot === 'proximo') {
+          icon = iconeNomeVerticeModoB(txt, tam, dx, dy);
+        } else if (modoRot === 'direto') {
+          icon = iconeNomeVerticeModoC(txt, tam, dx, dy);
+        } else {
+          icon = iconeNomeVertice(txt, tam, dx, dy);
+        }
+
         return (
           <Marker
             key={`nome${v.id}`}
             position={posRot ? [posRot.lat, posRot.lon] : [v.lat, v.lon]}
             draggable={modo === 'navegar' && !camadasBloqueadas.divisas}
             zIndexOffset={1000}
-            icon={iconeNomeVertice(
-              formatarNome(v, i),
-              Math.round(tamNomes * fzZoom),
-              posRot ? 0 : (dirsRotulo[i]?.[0] ?? 1),
-              posRot ? 0 : (dirsRotulo[i]?.[1] ?? 0),
-            )}
+            icon={icon}
             eventHandlers={{
               click() { if (!camadasBloqueadas.divisas) onSelecionar(v.id); },
               dragend(e) {
@@ -1356,7 +1424,7 @@ export default function MapEditor(props: Props) {
     glebaCorContorno, glebaCorPreenchimento, glebaVisivel = true, glebaTipoGleba,
     exibirLimitesFusoUTM = false, onToggleLimitesFusoUTM,
     geojsonMunicipio = null,
-    objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, centroPadrao = null, zoomPadrao = 13, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
+    objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, centroPadrao = null, zoomPadrao = 13, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', modoRotulosPlanta, objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
     conflitos = [],
@@ -2524,6 +2592,7 @@ export default function MapEditor(props: Props) {
         mostrarRotulos={mostrarRotulos}
         zoom={zoom}
         estiloVertice={estiloVertice}
+        modoRotulosPlanta={modoRotulosPlanta}
         tamNomes={tamNomes}
         fzZoom={fzZoom}
         dirsRotulo={dirsRotulo}

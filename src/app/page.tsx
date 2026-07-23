@@ -9824,6 +9824,7 @@ export default function EditorPage() {
               <div className="flex-grow min-h-0 h-full w-full relative">
                 <ErrorBoundary onReset={() => setVista('planta')}>
                   <MapEditor 
+                    modoRotulosPlanta={plantaConfig.modoRotulosPlanta}
                     exibirLimitesFusoUTM={exibirLimitesFusoUTM}
                     onToggleLimitesFusoUTM={() => setExibirLimitesFusoUTM(!exibirLimitesFusoUTM)}
                     geojsonMunicipio={geojsonMunicipio}
