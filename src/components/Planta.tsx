@@ -159,6 +159,134 @@ function rotuloConfrontanteLinhas(c: Confrontante): string[] {
   return linhas;
 }
 
+/** Renders a professional callout speech bubble ("janela de texto estilo balão saindo do vértice") for Modo B. */
+function BalaoRotuloModoB({
+  vx,
+  vy,
+  ox,
+  oy,
+  rot,
+  fz,
+  tProps,
+  ovR,
+}: {
+  vx: number;
+  vy: number;
+  ox: number;
+  oy: number;
+  rot: string;
+  fz: number;
+  tProps: any;
+  ovR: any;
+}) {
+  const hasCustomDrag = ovR?.dx != null || ovR?.dy != null;
+  const charW = fz * 0.62;
+  const padX = 4.5;
+  const padY = 2.5;
+  const boxW = Math.max(fz * 1.8, rot.length * charW + padX * 2);
+  const boxH = fz + padY * 2;
+
+  let bx: number, by: number;
+  if (hasCustomDrag) {
+    bx = vx + ovR.dx;
+    by = vy + ovR.dy;
+  } else {
+    // Distância base entre o vértice e a janela de texto
+    const gap = 11;
+    if (ox >= 0) {
+      bx = vx + gap;
+    } else {
+      bx = vx - gap - boxW;
+    }
+    if (oy <= 0) {
+      by = vy - gap - boxH * 0.5;
+    } else {
+      by = vy + gap - boxH * 0.5;
+    }
+  }
+
+  // Ponto central da caixa retangular
+  const cx = bx + boxW / 2;
+  const cy = by + boxH / 2;
+
+  const dx = vx - cx;
+  const dy = vy - cy;
+
+  // Largura da cauda na borda do retângulo
+  const tailW = Math.min(7, boxH * 0.55);
+  let p1x = bx, p1y = by;
+  let p2x = bx, p2y = by;
+
+  if (Math.abs(dx) * boxH > Math.abs(dy) * boxW) {
+    if (dx < 0) {
+      // Conecta pelo lado esquerdo da caixa (bx)
+      const midY = Math.max(by + tailW, Math.min(by + boxH - tailW, vy));
+      p1x = bx; p1y = midY - tailW / 2;
+      p2x = bx; p2y = midY + tailW / 2;
+    } else {
+      // Conecta pelo lado direito da caixa (bx + boxW)
+      const midY = Math.max(by + tailW, Math.min(by + boxH - tailW, vy));
+      p1x = bx + boxW; p1y = midY - tailW / 2;
+      p2x = bx + boxW; p2y = midY + tailW / 2;
+    }
+  } else {
+    if (dy < 0) {
+      // Conecta pelo topo da caixa (by)
+      const midX = Math.max(bx + tailW, Math.min(bx + boxW - tailW, vx));
+      p1x = midX - tailW / 2; p1y = by;
+      p2x = midX + tailW / 2; p2y = by;
+    } else {
+      // Conecta pela base da caixa (by + boxH)
+      const midX = Math.max(bx + tailW, Math.min(bx + boxW - tailW, vx));
+      p1x = midX - tailW / 2; p1y = by + boxH;
+      p2x = midX + tailW / 2; p2y = by + boxH;
+    }
+  }
+
+  // Ponta da cauda encosta no símbolo do vértice
+  const distV = Math.hypot(vx - cx, vy - cy) || 1;
+  const tipX = vx + ((cx - vx) / distV) * 3.5;
+  const tipY = vy + ((cy - vy) / distV) * 3.5;
+
+  return (
+    <g className="rotulo-balao-modo-b">
+      {/* Rabicho do balão conectando a janela ao vértice */}
+      <polygon
+        points={`${tipX.toFixed(1)},${tipY.toFixed(1)} ${p1x.toFixed(1)},${p1y.toFixed(1)} ${p2x.toFixed(1)},${p2y.toFixed(1)}`}
+        fill="#ffffff"
+        stroke="#334155"
+        strokeWidth={0.75}
+        strokeLinejoin="round"
+      />
+      {/* Retângulo do balão de texto */}
+      <rect
+        x={bx.toFixed(1)}
+        y={by.toFixed(1)}
+        width={boxW.toFixed(1)}
+        height={boxH.toFixed(1)}
+        rx={3.5}
+        ry={3.5}
+        fill="#ffffff"
+        stroke="#334155"
+        strokeWidth={0.75}
+      />
+      {/* Texto do vértice posicionado na janela de texto */}
+      <Ted
+        x={bx + padX}
+        y={by + padY + fz * 0.76}
+        base={rot}
+        size={fz}
+        anchor="start"
+        fill="#0f172a"
+        weight="bold"
+        halo={false}
+        fundoBranco={false}
+        {...tProps}
+      />
+    </g>
+  );
+}
+
 // Texto editável da planta: aplica override (conteúdo/escala/negrito/posição) e, no modo edição,
 // permite clique duplo (editar conteúdo em linha), clique direito (menu de formato) e arrastar para reposicionar.
 function Ted(props: {
@@ -714,7 +842,7 @@ export default function Planta({
   const raioDens = offBase * 3.5;            // raio (tela) para medir aglomeração de vértices
   const initialRotuloVert = vertices.map((v, i) => {
     const vx = ptsScr[i].x, vy = ptsScr[i].y;
-    if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); const px = sx(u.leste), py = sy(u.norte); return { v, i, x: px, y: py, xProximo: px, yProximo: py, hasPos: true }; }
+    if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); const px = sx(u.leste), py = sy(u.norte); return { v, i, x: px, y: py, ox: 1, oy: -1, xProximo: px, yProximo: py, hasPos: true }; }
     // direção pra FORA = oposto da bissetriz do ângulo interno (média das duas arestas)
     const prev = ptsScr[(i - 1 + nV) % nV], next = ptsScr[(i + 1) % nV];
     const n1x = prev.x - vx, n1y = prev.y - vy, l1 = Math.hypot(n1x, n1y) || 1;
@@ -736,6 +864,7 @@ export default function Planta({
     return {
       v, i,
       x: vx + ox * off, y: vy + oy * off,
+      ox, oy,
       xProximo: vx + offXProx, yProximo: vy + offYProx, anchorProximo: anchorProx,
       hasPos: false
     };
@@ -778,6 +907,7 @@ export default function Planta({
   const rotuloVert = initialRotuloVert.map((r) => ({
     v: r.v, i: r.i,
     x: r.x, y: r.y,
+    ox: r.ox ?? 1, oy: r.oy ?? -1,
     xProximo: r.xProximo, yProximo: r.yProximo, anchorProximo: r.anchorProximo
   }));
   // rótulo exibido do vértice: código SIGEF (padrão) ou P1, P2, P3… (topografia convencional)
@@ -2453,7 +2583,7 @@ export default function Planta({
       })()}
 
       {/* vértices + códigos (rótulo na posição arrastada, se houver; editável) */}
-      {rotuloVert.map(({ v, i, x, y, xProximo, yProximo, anchorProximo }) => {
+      {rotuloVert.map(({ v, i, x, y, ox, oy, xProximo, yProximo, anchorProximo }) => {
         const vx = sx(v.leste), vy = sy(v.norte);
         const vsel = editavel && selecionadoId === `vsel.${v.id}`;
         return (
@@ -2478,7 +2608,7 @@ export default function Planta({
             </g>
             {config.mostrarRotulosPlanta !== false && (() => {
               const isModoB = config.modoRotulosPlanta === 'proximo';
-              if (isModoB) return null; // Modo B não usa linha de chamada
+              if (isModoB) return null; // Modo B usa balão de fala conectado (BalaoRotuloModoB)
               const ovR = getOverride(`vert.${v.id}`);
               const lxr = (ovR?.dx != null) ? vx + ovR.dx : x + (ovR.dx ?? 0);
               const lyr = (ovR?.dy != null) ? vy + ovR.dy : y + (ovR.dy ?? 0);
@@ -2496,22 +2626,38 @@ export default function Planta({
             {config.mostrarRotulosPlanta !== false && (() => {
               const isModoB = config.modoRotulosPlanta === 'proximo';
               const ovR = getOverride(`vert.${v.id}`);
+              const rot = nomeVertice(v, i);
+
+              if (isModoB) {
+                const fz = Math.max(5.5, (fonteRot - 0.5) * 0.85);
+                return (
+                  <BalaoRotuloModoB
+                    vx={vx}
+                    vy={vy}
+                    ox={ox}
+                    oy={oy}
+                    rot={rot}
+                    fz={fz}
+                    ovR={ovR}
+                    tProps={tProps(`vert.${v.id}`)}
+                  />
+                );
+              }
+
               const hasCustomDrag = ovR?.dx != null || ovR?.dy != null;
-              const posX = hasCustomDrag ? vx : (isModoB ? xProximo : x);
-              const posY = hasCustomDrag ? vy : (isModoB ? yProximo : y);
-              const anchorVal = hasCustomDrag ? 'start' : (isModoB ? anchorProximo : 'start');
-              // Modo B reduz exatamente 20% (-20%) em relação ao tamanho base de Modo A (fonteRot - 0.5)
-              const fz = isModoB ? Math.max(5, (fonteRot - 0.5) * 0.8) : Math.max(6, fonteRot - 0.5);
+              const posX = hasCustomDrag ? vx : x;
+              const posY = hasCustomDrag ? vy : y;
+              const fz = Math.max(6, fonteRot - 0.5);
               return (
                 <Ted
                   x={posX}
                   y={posY}
-                  base={nomeVertice(v, i)}
+                  base={rot}
                   size={fz}
-                  anchor={anchorVal}
+                  anchor="start"
                   fill="#000"
-                  fundoBranco={isModoB}
-                  halo={!isModoB}
+                  halo={true}
+                  fundoBranco={false}
                   {...tProps(`vert.${v.id}`)}
                 />
               );
@@ -2607,7 +2753,20 @@ export default function Planta({
                 return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={alvoX - ux * 3} y2={midY - uy * 3} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
               })()}
               {config.mostrarRotulosPlanta !== false && (
-                <Ted x={isModoB ? rxProx : rx} y={isModoB ? ryProx : ry} base={rot} size={fz} fill="#000" fundoBranco={isModoB} halo={!isModoB} {...tProps(`vert.${v.id}`)} />
+                isModoB ? (
+                  <BalaoRotuloModoB
+                    vx={vx}
+                    vy={vy}
+                    ox={(vx - gcx) / (Math.hypot(vx - gcx, vy - gcy) || 1)}
+                    oy={(vy - gcy) / (Math.hypot(vx - gcx, vy - gcy) || 1)}
+                    rot={rot}
+                    fz={Math.max(5.5, (fonteRot - 0.5) * 0.85)}
+                    ovR={getOverride(`vert.${v.id}`)}
+                    tProps={tProps(`vert.${v.id}`)}
+                  />
+                ) : (
+                  <Ted x={rx} y={ry} base={rot} size={fz} fill="#000" fundoBranco={false} halo={true} {...tProps(`vert.${v.id}`)} />
+                )
               )}
             </g>
           );
