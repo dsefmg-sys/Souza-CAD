@@ -1779,29 +1779,22 @@ export default function MapEditor(props: Props) {
 
       {/* Limites municipais automáticos e Rótulo do Nome do Município no Mapa */}
       {geojsonMunicipio && zoomCorrente >= 10 && (
-        <LayerGroup>
-          <GeoJSON
-            key={`mun-limite-${JSON.stringify(geojsonMunicipio.coordinates?.[0]?.[0] || '')}`}
-            data={geojsonMunicipio}
-            style={{
-              color: '#a855f7',
-              weight: 2,
-              dashArray: '5 6',
-              fillColor: '#a855f7',
-              fillOpacity: 0.01,
-              interactive: false
-            }}
-          />
-          <CircleMarker
-            center={[latCentro, lonCentro]}
-            radius={0.1}
-            pathOptions={{ opacity: 0, fillOpacity: 0 }}
-          >
-            <Tooltip permanent direction="top" className="bg-purple-950/95 text-purple-300 text-[11px] font-black border border-purple-600/60 px-2.5 py-1 rounded-md shadow-xl uppercase select-none pointer-events-none tracking-wide">
-              {`MUNICÍPIO(S): ${formatarTextoMultimunicipal(geojsonMunicipio.properties?.display_name || geojsonMunicipio.properties?.name || '').textoCompleto || geojsonMunicipio.properties?.name || 'DIVISA MUNICIPAL'}`}
-            </Tooltip>
-          </CircleMarker>
-        </LayerGroup>
+        <GeoJSON
+          key={`mun-limite-${JSON.stringify(geojsonMunicipio.coordinates?.[0]?.[0] || '')}`}
+          data={geojsonMunicipio}
+          style={{
+            color: '#a855f7',
+            weight: 2,
+            dashArray: '5 6',
+            fillColor: '#a855f7',
+            fillOpacity: 0.01,
+            interactive: true
+          }}
+        >
+          <Tooltip direction="top" className="bg-purple-950/95 text-purple-300 text-[11px] font-black border border-purple-600/60 px-2.5 py-1 rounded-md shadow-xl uppercase select-none pointer-events-none tracking-wide">
+            {`MUNICÍPIO(S): ${formatarTextoMultimunicipal(geojsonMunicipio.properties?.display_name || geojsonMunicipio.properties?.name || '').textoCompleto || geojsonMunicipio.properties?.name || 'DIVISA MUNICIPAL'}`}
+          </Tooltip>
+        </GeoJSON>
       )}
 
       {/* referências certificadas (snap) */}

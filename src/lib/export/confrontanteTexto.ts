@@ -8,10 +8,15 @@ import { formatMatricula } from '../topo/geometry';
 
 /** Nome do imóvel/pessoa do confrontante já considerando espólio. */
 export function nomeConfrontante(c: Confrontante): string {
+  let nome = c.nome;
   if ((c.condicao ?? 'proprietario') === 'espolio') {
-    return /esp[óo]lio/i.test(c.nome) ? c.nome : `Espólio de ${c.nome}`;
+    nome = /esp[óo]lio/i.test(c.nome) ? c.nome : `Espólio de ${c.nome}`;
   }
-  return c.nome;
+  const lim = c.tipoLimite || '';
+  if (lim.startsWith('LN') && c.direcaoRio) {
+    nome += ` (${c.direcaoRio.toUpperCase()})`;
+  }
+  return nome;
 }
 
 /** Confrontante PESSOA física/jurídica que precisa assinar anuência, ou bem público (estrada, rio...)

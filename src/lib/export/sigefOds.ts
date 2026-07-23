@@ -3,7 +3,7 @@ import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex, I
 import { grausParaDMS } from '../topo/coords';
 import { numBR, formatMatricula } from '../topo/geometry';
 import { escaparXml } from './sanitizar';
-import { obterTipoLimiteEfetivo } from '../topo/sigefVocab';
+import { obterTipoLimiteEfetivo, obterNomeConfrontanteExibicao } from '../topo/sigefVocab';
 import { iniciarDoNorteHorario } from '../topo/vertices';
 
 // Preenche o template oficial do SIGEF (ODS) sem recriar abas/validações:
@@ -25,6 +25,7 @@ export function removerAcentos(str: string): string {
 
 export function obterNomeConfrontanteFormatado(conf: Confrontante | undefined, imoveisCadastrados?: ImovelCad[]): string {
   if (!conf) return '';
+  let nome = conf.nome || '';
   if (conf.matricula && imoveisCadastrados) {
     const cnsLimpo = (conf.cns || '').replace(/\D/g, '');
     const match = imoveisCadastrados.find((i) => {
@@ -34,10 +35,10 @@ export function obterNomeConfrontanteFormatado(conf: Confrontante | undefined, i
       return matMatch && cnsMatch;
     });
     if (match && match.denominacao && match.denominacao.trim()) {
-      return match.denominacao.trim();
+      nome = match.denominacao.trim();
     }
   }
-  return conf.nome || '';
+  return obterNomeConfrontanteExibicao({ ...conf, nome });
 }
 
 const TRAILING_FILLER =
@@ -82,7 +83,7 @@ function linhaVertice(
     celStr('ce40', v.metodo || tec.metodoPosicionamento || 'PG6') +
     // ce40 é o estilo de célula de dado presente no template (o antigo ce93 não existe no modelo
     // em branco; manter referência válida evita estilo pendente)
-    celStr('ce40', obterTipoLimiteEfetivo(v, tec.tipoLimite)) +
+    celStr('ce40', conf?.tipoLimite || obterTipoLimiteEfetivo(v, tec.tipoLimite)) +
     celStr('ce40', cns) +
     celStr('ce40', mat) +
     celStr('ce40', obterNomeConfrontanteFormatado(conf, imoveisCadastrados));
@@ -257,7 +258,7 @@ export function linhasConferencia(
       altitude: numBR(Number.isFinite(v.elevacao) ? v.elevacao : 0),
       sigmaZ: sigmaBR(v.sigmaZ, '0,01'),
       metodo: v.metodo || tec.metodoPosicionamento || 'PG6',
-      tipoLimite: obterTipoLimiteEfetivo(v, tec.tipoLimite),
+      tipoLimite: conf?.tipoLimite || obterTipoLimiteEfetivo(v, tec.tipoLimite),
       cns: mat ? (conf?.cns || cnsImovel || '').trim() : '',
       matricula: mat,
       confrontante: obterNomeConfrontanteFormatado(conf, imoveisCadastrados),

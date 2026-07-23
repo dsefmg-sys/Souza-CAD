@@ -89,3 +89,16 @@ export function obterTipoLimiteEfetivo(v: { tipoLimite?: string; representacao?:
   }
 }
 
+/** Formata o nome do confrontante para incluir a direção do rio (Jusante/Montante) se configurado */
+export function obterNomeConfrontanteExibicao(c: { nome: string; condicao?: string; tipoLimite?: string; direcaoRio?: string }): string {
+  let nome = c.nome || '';
+  if (c.condicao === 'espolio') {
+    nome = /esp[óo]lio/i.test(nome) ? nome : `Espólio de ${nome}`;
+  }
+  const lim = c.tipoLimite || '';
+  if (lim.startsWith('LN') && c.direcaoRio) {
+    nome += ` (${c.direcaoRio.toUpperCase()})`;
+  }
+  return nome;
+}
+

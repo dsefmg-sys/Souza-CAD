@@ -125,6 +125,66 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
                 </datalist>
               </>
             )}
+
+            {/* Divisa e Limite (Para ODS e Memorial) */}
+            <div className="border-t pt-3.5 space-y-3">
+              <div className="text-xs font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400 mb-1">Dados da Divisa / Limite</div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1 text-xs">
+                  <span className="font-bold text-muted-foreground">Tipo de Limite (SIGEF)</span>
+                  <select 
+                    className="h-8 rounded-md border bg-background px-2 text-sm focus:ring-1 focus:ring-primary outline-none" 
+                    value={c.tipoLimite || ''} 
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      set({ 
+                        tipoLimite: val || undefined, 
+                        // Limpa direção do rio se não for mais limite natural LN
+                        direcaoRio: val.startsWith('LN') ? (c.direcaoRio || 'jusante') : undefined 
+                      });
+                    }}
+                  >
+                    <option value="">Padrão (LA6 - Linha Ideal)</option>
+                    <option value="LA1">Cerca (LA1)</option>
+                    <option value="LA2">Muro (LA2)</option>
+                    <option value="LA3">Vala (LA3)</option>
+                    <option value="LA4">Cachoeira / Escarpa (LA4)</option>
+                    <option value="LA5">Linha de Cumeada (LA5)</option>
+                    <option value="LA6">Linha Ideal (LA6)</option>
+                    <option value="LN1">Curso d'água / Rio (LN1)</option>
+                    <option value="LN2">Canal / Valão Natural (LN2)</option>
+                  </select>
+                </label>
+
+                <label className="flex flex-col gap-1 text-xs">
+                  <span className="font-bold text-muted-foreground">Faixa de Domínio / Largura (m)</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Ex: 15,00"
+                    className="h-8 rounded-sm border bg-background px-2 text-sm"
+                    value={c.larguraFaixa ?? ''}
+                    onChange={(e) => set({ larguraFaixa: e.target.value ? Number(e.target.value) : undefined })}
+                  />
+                </label>
+              </div>
+
+              {c.tipoLimite?.startsWith('LN') && (
+                <label className="flex flex-col gap-1 text-xs">
+                  <span className="font-bold text-muted-foreground">Direção do Rio (Fluxo)</span>
+                  <select 
+                    className="h-8 rounded-md border bg-background px-2 text-sm focus:ring-1 focus:ring-primary outline-none" 
+                    value={c.direcaoRio || 'jusante'} 
+                    onChange={(e) => set({ direcaoRio: e.target.value as 'jusante' | 'montante' })}
+                  >
+                    <option value="jusante">Jusante (sentido da correnteza)</option>
+                    <option value="montante">Montante (sentido contrário à correnteza)</option>
+                  </select>
+                </label>
+              )}
+            </div>
           </div>
 
           {/* Prévia do Rótulo na Planta (Direita) */}

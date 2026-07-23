@@ -717,6 +717,10 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   <Label className="text-xs font-semibold">Nome Completo</Label>
                   <Input value={t.nome} onChange={(e) => changeT('nome', e.target.value)} />
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Código de Credenciado no INCRA (prefixo dos vértices)</Label>
+                  <Input value={t.credenciamentoIncra || ''} onChange={(e) => changeT('credenciamentoIncra', e.target.value.toUpperCase())} placeholder="Ex: COIN, ABCD" />
+                </div>
                 {/* conselho: define as siglas das peças — técnico (CFT/TRT) x engenheiro (CREA/ART) x técnico agrícola (CFTA/TRT) */}
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Conselho / categoria</Label>
@@ -1111,7 +1115,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               <div className="space-y-3.5">
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Credenciamento INCRA (prefixo dos vértices)</Label>
-                  <Input value={t.credenciamentoIncra} onChange={(e) => changeT('credenciamentoIncra', e.target.value)} />
+                  <Input value={t.credenciamentoIncra || ''} onChange={(e) => changeT('credenciamentoIncra', e.target.value.toUpperCase())} placeholder="Ex: COIN, ABCD" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Tecnologia do Levantamento (Padrão)</Label>

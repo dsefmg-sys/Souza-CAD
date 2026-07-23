@@ -8,7 +8,7 @@ import { rotulosProfissional } from '@/lib/topo/profissional';
 import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm, utmParaGeo, aproximarDeclinacaoMagnetica } from '@/lib/topo/coords';
 import { distanciaCota, obterPontosCotaOffset } from '@/lib/topo/objetos';
-import { REPRES_LABEL, corDivisa, obterTipoLimiteEfetivo } from '@/lib/topo/sigefVocab';
+import { REPRES_LABEL, corDivisa, obterTipoLimiteEfetivo, obterNomeConfrontanteExibicao } from '@/lib/topo/sigefVocab';
 import { rotuloPapelProprietario } from '@/lib/export/papelProprietario';
 import type { ObjetoDesenho } from '@/lib/topo/types';
 import { calcularAreaSgl } from '@/lib/topo/sgl';
@@ -137,14 +137,14 @@ function rotuloConfrontanteLinhas(c: Confrontante): string[] {
   const cond = c.condicao ?? 'proprietario';
   const linhas: string[] = [];
   // Bem público (estrada, rio...): só o nome — sem CPF/matrícula/cônjuge, não é pessoa.
-  if (cond === 'publico') return [c.nome];
+  if (cond === 'publico') return [obterNomeConfrontanteExibicao(c)];
   if (cond === 'espolio') {
-    linhas.push(/esp[óo]lio/i.test(c.nome) ? c.nome : `Espólio de ${c.nome}`);
+    linhas.push(obterNomeConfrontanteExibicao(c));
     if (c.inventarianteNome) linhas.push(`Inventariante: ${c.inventarianteNome}`);
     if (c.matricula) linhas.push(`Matrícula nº ${formatMatricula(c.matricula)}`);
     return linhas;
   }
-  linhas.push(`Nome: ${c.nome}`);
+  linhas.push(`Nome: ${obterNomeConfrontanteExibicao(c)}`);
   linhas.push(`CPF: ${c.cpf || '—'}`);
   if (cond === 'posseiro') {
     linhas.push('Possuidor(a)');

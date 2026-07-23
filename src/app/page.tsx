@@ -1509,6 +1509,18 @@ export default function EditorPage() {
   const [visaoProjetos, setVisaoProjetos] = useState<'ativos' | 'lixeira'>('ativos');
   const [filtroGeodesico, setFiltroGeodesico] = useState<'todos' | 'sigef' | 'convencional'>('todos');
   const [buscaAbrir, setBuscaAbrir] = useState('');
+  const [prefixoLote, setPrefixoLote] = useState('');
+  const [marcoInicialLote, setMarcoInicialLote] = useState(1);
+  const [pontoInicialLote, setPontoInicialLote] = useState(1);
+
+  useEffect(() => {
+    if (tecnico) {
+      setPrefixoLote((tecnico.credenciamentoIncra || '').toUpperCase());
+      setMarcoInicialLote(tecnico.contadorMarco || 1);
+      setPontoInicialLote(tecnico.contadorPonto || 1);
+    }
+  }, [tecnico]);
+
   const [exportandoProjetoId, setExportandoProjetoId] = useState<string | null>(null);
   const [sugProp, setSugProp] = useState<ProprietarioCad[]>([]);
   const [sugConf, setSugConf] = useState<ConfrontanteCad[]>([]);
@@ -10735,10 +10747,61 @@ export default function EditorPage() {
                     Nenhum vértice cadastrado no projeto atual. Importe um TXT, DXF ou clique no mapa para adicionar.
                   </div>
                 ) : (
-                  <div className="border rounded-xl overflow-hidden shadow-xs bg-background max-h-[440px] overflow-y-auto scroll-fino">
-                    <table className="w-full text-left text-xs font-mono">
-                      <thead className="bg-muted/50 border-b text-[10px] uppercase font-bold text-muted-foreground sticky top-0 bg-muted z-10">
-                        <tr>
+                  <div className="space-y-2">
+                    {/* Barra de Ação Rápida para Renumeração Sequencial */}
+                    <div className="flex flex-wrap items-center gap-3 p-3 bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs font-semibold">
+                      <div className="flex items-center gap-1.5">
+                        <ListOrdered className="size-4 text-indigo-500 shrink-0" />
+                        <span className="text-[11px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Renumeração Sequencial</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 flex-grow sm:flex-grow-0">
+                        <label className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Prefixo:</span>
+                          <Input
+                            className="h-7 w-20 px-2 py-0.5 text-xs font-bold uppercase"
+                            value={prefixoLote}
+                            onChange={(e) => setPrefixoLote(e.target.value.toUpperCase())}
+                            placeholder="INCRA"
+                          />
+                        </label>
+                        <label className="flex items-center gap-1">
+                          <span className="text-muted-foreground">M inicial:</span>
+                          <Input
+                            type="number"
+                            className="h-7 w-16 px-2 py-0.5 text-xs font-bold"
+                            value={marcoInicialLote}
+                            onChange={(e) => setMarcoInicialLote(Math.max(1, Number(e.target.value) || 1))}
+                          />
+                        </label>
+                        <label className="flex items-center gap-1">
+                          <span className="text-muted-foreground">P inicial:</span>
+                          <Input
+                            type="number"
+                            className="h-7 w-16 px-2 py-0.5 text-xs font-bold"
+                            value={pontoInicialLote}
+                            onChange={(e) => setPontoInicialLote(Math.max(1, Number(e.target.value) || 1))}
+                          />
+                        </label>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-7 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                        onClick={() => {
+                          snap();
+                          const novos = recodificar(vertices, prefixoLote, marcoInicialLote, pontoInicialLote);
+                          setVertices(novos);
+                          aviso(`Vértices renomeados sequencialmente a partir de ${prefixoLote || 'VER'}-M-${String(marcoInicialLote).padStart(4, '0')} e P-${String(pontoInicialLote).padStart(4, '0')}.`);
+                        }}
+                      >
+                        Renomear Sequencial
+                      </Button>
+                    </div>
+
+                    <div className="border rounded-xl overflow-hidden shadow-xs bg-background max-h-[380px] overflow-y-auto scroll-fino">
+                      <table className="w-full text-left text-xs font-mono">
+                        <thead className="bg-muted/50 border-b text-[10px] uppercase font-bold text-muted-foreground sticky top-0 bg-muted z-10">
+                          <tr>
                           <th className="p-2 text-center w-10">#</th>
                           <th className="p-2">Vértice</th>
                           <th className="p-2">Leste (E)</th>
@@ -10770,6 +10833,7 @@ export default function EditorPage() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
                   </div>
                 )}
               </div>

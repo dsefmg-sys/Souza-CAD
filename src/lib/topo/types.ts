@@ -244,6 +244,9 @@ export interface Confrontante {
   cor?: string;
   layoutAssinatura?: 'vertical' | 'horizontal';
   oculto?: boolean;            // se true, oculta a caixa de assinatura no mapa e na planta
+  tipoLimite?: string;         // limite geodésico customizado do confrontante (ex: LA1, LN1)
+  direcaoRio?: 'montante' | 'jusante'; // direção do rio se for limite natural LN
+  larguraFaixa?: number;       // largura ou faixa de domínio em metros
 }
 
 /** Objeto de desenho livre (georreferenciado) sobreposto ao mapa/planta. */
