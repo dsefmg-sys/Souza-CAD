@@ -2024,7 +2024,7 @@ export default function MapEditor(props: Props) {
       })()}
 
       {/* Caixas de assinatura dos confrontantes arrastáveis no modo mapa */}
-      {camadasVisiveis.divisas !== false && glebaVisivel !== false && confrontantes && confrontantes.map((c) => {
+      {camadasVisiveis.divisas !== false && camadasVisiveis.confrontantes !== false && glebaVisivel !== false && confrontantes && confrontantes.map((c, cIdx) => {
         if (c.oculto) return null;
         const idxs = Object.entries(confrontantePorLado || {}).filter(([, cid]) => cid === c.id).map(([i]) => Number(i));
         
@@ -2037,7 +2037,7 @@ export default function MapEditor(props: Props) {
 
         if (centroLat === undefined || centroLon === undefined) return null;
 
-        // Calcula vetor normal apontando para fora do polígono (centroide)
+        // Calcula vetor normal apontando para fora do polígono (centroide) com escalonamento (stagger)
         let pushLat = 0;
         let pushLon = 0;
         if (vA && vB && validos.length >= 3) {
@@ -2066,8 +2066,9 @@ export default function MapEditor(props: Props) {
           
           const len = Math.sqrt(pLat * pLat + pLon * pLon);
           if (len > 0) {
-            // Deslocamento de ~20-25 metros em graus lat/lon
-            const offsetDeg = 0.00022;
+            // Deslocamento escalonado de ~50m a ~90m em graus lat/lon para evitar colisão entre confrontantes adjacentes
+            const staggerMult = 1 + (cIdx % 3) * 0.45;
+            const offsetDeg = 0.00050 * staggerMult;
             pushLat = (pLat / len) * offsetDeg;
             pushLon = (pLon / len) * offsetDeg;
           }
@@ -2128,21 +2129,27 @@ export default function MapEditor(props: Props) {
         });
 
         return (
-          <Marker
-            key={`conf-box-${c.id}`}
-            position={[posLat, posLon]}
-            icon={customIcon}
-            draggable={modo === 'navegar'}
-            eventHandlers={{
-              dragend: (e) => {
-                const marker = e.target;
-                const newPos = marker.getLatLng();
-                const dLat = newPos.lat - centroLat;
-                const dLon = newPos.lng - centroLon;
-                onAjustarPosRotuloConfrontante?.(c.id, newPos.lat, newPos.lng, dLat, dLon);
-              },
-            }}
-          />
+          <Fragment key={`conf-group-${c.id}`}>
+            {/* Linha de chamada (Leader Line) interligando a divisa à caixa do confrontante */}
+            <Polyline
+              positions={[[centroLat, centroLon], [posLat, posLon]]}
+              pathOptions={{ color: corConf, weight: 1.5, dashArray: '4,4', opacity: 0.8 }}
+            />
+            <Marker
+              position={[posLat, posLon]}
+              icon={customIcon}
+              draggable={modo === 'navegar'}
+              eventHandlers={{
+                dragend: (e) => {
+                  const marker = e.target;
+                  const newPos = marker.getLatLng();
+                  const dLat = newPos.lat - centroLat;
+                  const dLon = newPos.lng - centroLon;
+                  onAjustarPosRotuloConfrontante?.(c.id, newPos.lat, newPos.lng, dLat, dLon);
+                },
+              }}
+            />
+          </Fragment>
         );
       })}
 
